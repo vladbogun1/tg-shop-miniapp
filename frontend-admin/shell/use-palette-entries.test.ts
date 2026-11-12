@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { searchEntries } from "./use-palette-entries";
+import type { SettingItem } from "@/features/settings";
+import { searchEntries, settingEntries } from "./use-palette-entries";
 
 describe("searchEntries", () => {
   it("превращает группы поиска в строки палитры с пометкой «найдено» и подписью", () => {
@@ -11,5 +12,23 @@ describe("searchEntries", () => {
       ["o:1", "Заказы", true, "+380", "/orders/1"],
       ["p:1", "Товары", true, "LZ-1", "/products?edit=1"],
     ]);
+  });
+});
+
+describe("settingEntries", () => {
+  const items = [
+    { key: "novaposhta.tracking", group: "novaposhta", subgroup: "tracking", label: "Отслеживать посылки", description: "статусы" },
+    { key: "catalog.lowStockQty", group: "stock", subgroup: null, label: "Порог «мало на складе»", description: "посылки нет" },
+  ] as unknown as SettingItem[];
+
+  it("находит поле по подписи и ведёт на его раздел, вкладку и якорь", () => {
+    expect(settingEntries(items, "посылк").map((r) => [r.key, r.group, r.found, r.hint, r.href])).toEqual([
+      ["setting:novaposhta.tracking", "Настройки", true, "Доставка", "/settings/delivery?tab=tracking#setting-novaposhta.tracking"],
+    ]);
+  });
+
+  it("короткий запрос или настройки ещё не загружены — ничего", () => {
+    expect(settingEntries(items, "п")).toEqual([]);
+    expect(settingEntries(undefined, "посылк")).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import { SettingsScreen } from "@/features/settings";
+import { SettingsOverviewScreen } from "@/features/settings";
 
 export default function Page() {
-  return <SettingsScreen />;
+  return <SettingsOverviewScreen />;
 }

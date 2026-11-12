@@ -7,9 +7,9 @@
  */
 import { Smartphone } from "lucide-react";
 import { PanelHeader } from "@/components/ui/PanelHeader";
-import { InstallBlock } from "./device/InstallBlock";
-import { PushBlock } from "./device/PushBlock";
-import { useDevicePush } from "./device/use-device-push";
+import { InstallBlock } from "./InstallBlock";
+import { PushBlock } from "./PushBlock";
+import { useDevicePush } from "./use-device-push";
 
 export function DevicePanel() {
   const push = useDevicePush();

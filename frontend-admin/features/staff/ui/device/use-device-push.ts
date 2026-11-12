@@ -5,9 +5,17 @@ import { toast } from "@shop/ui/toast";
 import { useCallback, useEffect, useState } from "react";
 import { isIosBelow } from "@/lib/ios-version";
 import { iosVersion, isIos, swEnabled, usePwa } from "@/lib/pwa";
-import { currentSubscription, disablePush, enablePush, pushApi, pushPermission, pushSupported, type PushPermission } from "@/features/notification";
-import { settingsKeys } from "../../keys";
-import { usePushConfig } from "../../queries";
+import {
+  currentSubscription,
+  disablePush,
+  enablePush,
+  notificationKeys,
+  pushApi,
+  pushPermission,
+  pushSupported,
+  usePushConfig,
+  type PushPermission,
+} from "@/features/notification";
 
 /** Состояние push на ЭТОМ устройстве + включение/выключение и тест. */
 export function useDevicePush() {
@@ -40,7 +48,7 @@ export function useDevicePush() {
     success: (on) => (on ? "Уведомления включены на этом устройстве" : "Уведомления на этом устройстве выключены"),
     toastOnError: false,
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось изменить уведомления"),
-    invalidate: [settingsKeys.pushConfig()],
+    invalidate: [notificationKeys.pushConfig()],
   });
   const testM = useApiMutation({
     mutationFn: () => pushApi.test(endpoint),

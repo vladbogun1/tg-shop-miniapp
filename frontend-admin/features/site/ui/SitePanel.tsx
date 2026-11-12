@@ -1,7 +1,6 @@
 "use client";
 
 import { Globe, RefreshCw } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { Badge } from "@/components/ui/Badge";
 import { PanelHeader } from "@/components/ui/PanelHeader";
@@ -14,17 +13,12 @@ import { isMissing, useRevalidateSite, useSiteStatus } from "../queries";
  * после правок, которые сами обновление не запускают.
  */
 export function SitePanel() {
-  const rootRef = useRef<HTMLElement>(null);
-
-  // «Внимание» links here as /settings#site; the panel mounts only after the settings load.
-  useEffect(() => {
-    if (window.location.hash === "#site") rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  // «Внимание» links to /settings/site — this panel is the whole page there, no scrolling needed.
   const statusQ = useSiteStatus();
   const revalidate = useRevalidateSite();
 
   return (
-    <section id="site" ref={rootRef} className="panel min-w-0 scroll-mt-[88px] p-5">
+    <section id="site" className="panel min-w-0 scroll-mt-[88px] p-5">
       <PanelHeader icon={Globe} title="Сайт" description="Сайт обновляет страницы сам; кнопка — если нужно сразу." />
       <Button
         variant="surface"

@@ -1,7 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
+import { withQuery, type PageSearchParams } from "@/lib/with-query";
 
-import { AdminsScreen } from "@/features/staff";
-
-export default function Page() {
-  return <AdminsScreen />;
+/** «Админы» переехали в «Настройки → Админы»; старые ссылки и закладки ведут туда же (с теми же параметрами). */
+export default async function AdminsPage({ searchParams }: { searchParams: Promise<PageSearchParams> }) {
+  redirect(withQuery("/settings/admins", await searchParams));
 }

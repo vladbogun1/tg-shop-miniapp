@@ -6,10 +6,12 @@ export type SettingValue = number | boolean | string;
 export type SettingOption = Schemas["SettingsSettingDefinitionOption"];
 
 /** В OpenAPI тип и значения — `string`/`unknown`; здесь сужены до того, что отдаёт бэкенд (SettingType, SettingValue). */
-export type SettingItem = Omit<Schemas["SettingItemDto"], "type" | "value" | "defaultValue"> & {
+export type SettingItem = Omit<Schemas["SettingItemDto"], "type" | "value" | "defaultValue" | "subgroup"> & {
   type: SettingType;
   value: SettingValue;
   defaultValue: SettingValue;
+  /** Вкладка внутри большой группы (Новая Почта: checkout/ttn/boxes/tracking); у остальных групп null. */
+  subgroup?: string | null;
 };
 export type SettingsGroup = Schemas["SettingsGroupDto"];
 export type SettingsResponse = { groups: SettingsGroup[]; items: SettingItem[] };

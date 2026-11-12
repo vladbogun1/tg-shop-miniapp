@@ -6,7 +6,8 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect } from "react";
 import { ApiError } from "@shop/core/errors";
 import { useConfirm } from "@shop/ui/confirm";
-import { broadcastApi } from "./api";
+import { QUERY_PRESETS } from "@shop/core/query";
+import { broadcastApi, pushApi } from "./api";
 import { notificationKeys } from "./keys";
 import type { BroadcastStartBody, BroadcastTestBody, ShopLang } from "./model/types";
 
@@ -90,4 +91,12 @@ export function useSendBroadcastTest() {
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : "Ошибка отправки"),
   });
+}
+
+/** Публичный конфиг push меняется редко — держим свежим вдвое дольше обычного списка. */
+const PUSH_CONFIG_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+
+/** Push на сервере: включён ли, ключ для подписки, сколько устройств у админа («Мой аккаунт» → «Это устройство»). */
+export function usePushConfig() {
+  return useQuery({ queryKey: notificationKeys.pushConfig(), queryFn: pushApi.config, staleTime: PUSH_CONFIG_STALE_MS });
 }

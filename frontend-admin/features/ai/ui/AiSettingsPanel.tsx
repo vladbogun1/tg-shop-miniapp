@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, ChevronRight } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { AI_KEYS, blockKeys, unlistedKeys, type AiBlock } from "../model/setting-keys";
 import { aiSettingViews, type SettingView } from "../model/setting-views";
@@ -23,6 +23,8 @@ interface Props {
    * `views` — числа, которые показываются не в единицах хранения (лимиты — доллары вместо центов).
    */
   renderFields: (keys: readonly string[], views?: Readonly<Record<string, SettingView>>) => ReactNode;
+  /** Поле, на которое ведёт ссылка: если оно в «Дополнительно», раскрывашка открывается сама. */
+  focusKey?: string | null;
 }
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -38,8 +40,11 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 }
 
 /** Раскрывашка «Ещё»: содержимое монтируется только раскрытым (история грузится по требованию). */
-function Disclosure({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+function Disclosure({ title, hint, forceOpen = false, children }: { title: string; hint: string; forceOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(forceOpen);
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
   return (
     <div className="min-w-0 rounded-[var(--r-md)] border border-[var(--line)]">
       <button
@@ -64,11 +69,12 @@ function Disclosure({ title, hint, children }: { title: string; hint: string; ch
  * Состояние (общий выключатель и расход), Лимиты в долларах с гривнами, Функции, Поиск, Уведомления и «Ещё» —
  * «Дополнительно» (потолок, дедлайн, темп поиска, хранение, курс) и «История изменений».
  */
-export function AiSettingsPanel({ title, description, keys, labels, renderFields }: Props) {
+export function AiSettingsPanel({ title, description, keys, labels, renderFields, focusKey }: Props) {
   const present = new Set(keys);
   const of = (block: AiBlock) => blockKeys(block).filter((k) => present.has(k));
   const rateMilli = useAiState().data?.rateMilli;
   const views = useMemo(() => aiSettingViews(rateMilli), [rateMilli]);
+  const moreKeys = [...of("more"), ...unlistedKeys(keys)];
   const moneyLabels = keys.flatMap((k, i) => (k === AI_KEYS.monthLimit || k === AI_KEYS.dayLimit ? [labels[i] ?? k] : []));
   return (
     <div className="flex min-w-0 flex-col gap-5">
@@ -90,8 +96,12 @@ export function AiSettingsPanel({ title, description, keys, labels, renderFields
         {renderFields(of("alerts"))}
       </Section>
       <Section title="Ещё">
-        <Disclosure title="Дополнительно" hint="Потолок на задачу, дедлайн, темп поиска, хранение, курс доллара">
-          {renderFields([...of("more"), ...unlistedKeys(keys)])}
+        <Disclosure
+          title="Дополнительно"
+          hint="Потолок на задачу, дедлайн, темп поиска, хранение, курс доллара"
+          forceOpen={!!focusKey && moreKeys.includes(focusKey)}
+        >
+          {renderFields(moreKeys)}
         </Disclosure>
         <Disclosure title="История изменений" hint="Кто и когда менял лимиты и выключатели">
           <AiSettingsHistory labels={labels} moneyLabels={moneyLabels} rateKopecks={rateMilli ? Math.round(rateMilli / 10) : null} />

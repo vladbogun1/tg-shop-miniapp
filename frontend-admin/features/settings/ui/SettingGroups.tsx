@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { SettingView } from "@/features/ai";
 import type { SettingItem } from "../api";
@@ -42,8 +42,14 @@ const BOT_LANG_LABEL: Record<BotLang, string> = { uk: "Укр", ru: "Рус", en
 const BOT_LANGS: { value: BotLang; label: string }[] = LOCALES.map((l) => ({ value: l, label: BOT_LANG_LABEL[l] }));
 
 /** Три приветствия /start — один редактор с переключателем языка. */
-export function BotTexts({ items, draft, onChange, onReset }: GroupProps) {
+export function BotTexts({ items, draft, onChange, onReset, focusKey }: GroupProps & { focusKey?: string | null }) {
   const [lang, setLang] = useState<BotLang>("uk");
+  // Ссылка на приветствие другого языка (поиск, Ctrl+K) переключает язык, иначе поля нет на странице.
+  useEffect(() => {
+    const l = focusKey?.startsWith(BOT_TEXT_PREFIX) ? focusKey.slice(BOT_TEXT_PREFIX.length) : null;
+    const found = BOT_LANGS.find((x) => x.value === l);
+    if (found) setLang(found.value);
+  }, [focusKey]);
   const item = items.find((it) => it.key === BOT_TEXT_PREFIX + lang);
   const others = items.filter((it) => !it.key.startsWith(BOT_TEXT_PREFIX));
   const options = BOT_LANGS.map((l) => {

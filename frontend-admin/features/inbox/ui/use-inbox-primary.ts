@@ -60,7 +60,7 @@ export function useInboxPrimary() {
         router.push("/reviews?status=PENDING");
         break;
       case "NP_SYSTEM":
-        router.push("/settings#group-novaposhta");
+        router.push("/settings/delivery");
         break;
       case "SUPPORT":
         // A support thread, not an order: entityId is the thread id.

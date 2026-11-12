@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * «Админы» (route "/admins") — только для главного админа (SUPER_ADMIN): кто входит в админку,
+ * «Админы» (route "/settings/admins"; old "/admins" redirects) — только для главного админа (SUPER_ADMIN): кто входит в админку,
  * приглашения и что можно сделать с другим админом. Остальным скрыт в меню; бэкенд там отвечает 403.
  * Свою учётку здесь не трогаем — это «Мой аккаунт».
  */
@@ -19,7 +19,8 @@ import { LinkModal } from "./LinkModal";
 import { TeamList } from "./TeamList";
 import { useAdminActions } from "./use-admin-actions";
 
-export function AdminsScreen() {
+/** `embedded` — внутри «Настройки → Админы»: заголовок страницы рисует раздел, здесь только кнопка приглашения. */
+export function AdminsScreen({ embedded = false }: { embedded?: boolean } = {}) {
   const superAdmin = useIsSuperAdmin();
   if (superAdmin === undefined) return <CenterSpinner label="Загрузка…" />;
   if (!superAdmin) {
@@ -31,27 +32,32 @@ export function AdminsScreen() {
       />
     );
   }
-  return <Team />;
+  return <Team embedded={embedded} />;
 }
 
-function Team() {
+function Team({ embedded }: { embedded: boolean }) {
   const teamQ = useTeamQuery();
   const [inviting, setInviting] = useState<{ telegramUserId?: number } | null>(null);
   const [link, setLink] = useState<LinkToShow | null>(null);
   const actions = useAdminActions(setLink, (id) => setInviting({ telegramUserId: id }));
   const rows = useMemo(() => (teamQ.data ? teamRows(teamQ.data) : []), [teamQ.data]);
+  const invite = (
+    <Button variant="accent" icon={<UserPlus className="h-4 w-4" />} onClick={() => setInviting({})}>
+      Пригласить админа
+    </Button>
+  );
 
   return (
     <div className="min-w-0">
-      <PageHeader
-        title="Админы"
-        subtitle="Кто входит в админку. Приглашения, сброс 2FA и пароля, блокировка. Свою учётку — в «Мой аккаунт»."
-        actions={
-          <Button variant="accent" icon={<UserPlus className="h-4 w-4" />} onClick={() => setInviting({})}>
-            Пригласить админа
-          </Button>
-        }
-      />
+      {embedded ? (
+        <div className="mb-4 flex justify-end">{invite}</div>
+      ) : (
+        <PageHeader
+          title="Админы"
+          subtitle="Кто входит в админку. Приглашения, сброс 2FA и пароля, блокировка. Свою учётку — в «Мой аккаунт»."
+          actions={invite}
+        />
+      )}
       <QueryState isLoading={teamQ.isLoading} isError={teamQ.isError} error={teamQ.error} refetch={teamQ.refetch} loadingLabel="Загружаем админов">
         <TeamList rows={rows} itemsFor={actions.itemsFor} askFinance={actions.askFinance} />
       </QueryState>

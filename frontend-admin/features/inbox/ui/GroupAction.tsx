@@ -48,7 +48,7 @@ export function GroupAction({ group, order }: { group: InboxGroup; order: InboxO
   }
   if (group.id === "SITE_ERROR") {
     return (
-      <Link href="/settings#site" className={LINK_CLASS}>
+      <Link href="/settings/site" className={LINK_CLASS}>
         Настройки → Сайт <ArrowRight className="h-4 w-4" />
       </Link>
     );

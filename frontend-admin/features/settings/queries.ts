@@ -3,7 +3,6 @@
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { pushApi } from "@/features/notification";
 import { settingsApi, type SettingValue } from "./api";
 import { settingsKeys } from "./keys";
 
@@ -25,16 +24,24 @@ export function useShopSetting<T extends SettingValue>(key: string, fallback: T)
   return item && typeof item.value === typeof fallback ? (item.value as T) : fallback;
 }
 
+/**
+ * Поля настроек для поиска Ctrl+K: тот же кэш, что у экрана настроек, без запроса, пока ищут меньше `enabled`
+ * символов, и без перезапроса на каждый символ (свежесть — как у `useShopSetting`).
+ */
+export function useSettingsSearchItems(enabled: boolean) {
+  const { data } = useQuery({
+    queryKey: settingsKeys.all(),
+    queryFn: settingsApi.list,
+    staleTime: QUERY_PRESETS.static.staleTime,
+    enabled,
+  });
+  return data?.items;
+}
+
 export function useSystemQuery() {
   return useQuery({ queryKey: settingsKeys.system(), queryFn: settingsApi.system });
 }
 
-/** Публичный конфиг push меняется редко — держим свежим вдвое дольше обычного списка. */
-const PUSH_CONFIG_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
-
-export function usePushConfig() {
-  return useQuery({ queryKey: settingsKeys.pushConfig(), queryFn: pushApi.config, staleTime: PUSH_CONFIG_STALE_MS });
-}
 
 /** Сохранение изменённых настроек одним запросом; ответ сервера заменяет кэш. */
 export function useSaveSettings() {

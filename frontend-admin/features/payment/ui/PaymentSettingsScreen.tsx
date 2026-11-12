@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Payment settings (route "/payment").
+ * Payment settings: «Настройки → Оплата» → «Способы оплаты» (route "/settings/payment"; old "/payment" redirects).
  *  - monobank status: is the acquiring token set and accepted, the merchant, the last webhook and
  *    whether its signature was valid (GET /api/admin/payments/monobank/status).
  *  - Payment options: GET ?includeInactive=true / PUT /api/admin/payment-options (the whole list,
@@ -11,12 +11,10 @@
  *    moved up/down. Rows are compact; the editor opens in the row (laptop) or in a sheet (phone).
  *
  * Nothing can be saved until the options loaded (A7: a failed load used to leave an empty form
- * whose «Сохранить» switched every payment option off). Leaving with unsaved edits asks first.
+ * whose «Сохранить» switched every payment option off). Unsaved edits are reported via `onDirtyChange`; the section page asks before leaving.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CircleHelp, Plus, Wallet } from "lucide-react";
-import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@shop/ui/admin-button";
 import { useMediaQuery } from "@shop/ui/use-media";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -31,7 +29,15 @@ import { MonobankCard } from "./MonobankCard";
 import { OptionsList } from "./OptionsList";
 import { PaymentSaveBar } from "./PaymentSaveBar";
 
-export function PaymentSettingsScreen() {
+interface Props {
+  /**
+   * Несохранённые правки отдаются наверх: экран живёт вкладкой страницы «Настройки → Оплата», и уход с неё
+   * спрашивает один общий guard раздела (свой заголовок и свой guard у экрана больше не нужны).
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+export function PaymentSettingsScreen({ onDirtyChange }: Props = {}) {
   const optionsQ = usePaymentOptionsQuery("all");
   const monoQ = useMonobankStatusQuery();
   const wide = useMediaQuery("(min-width: 1536px)");
@@ -58,7 +64,9 @@ export function PaymentSettingsScreen() {
 
   const loaded = !!optionsQ.data;
   const dirty = loaded && optionsSnapshot(options) !== baseOptions;
-  useUnsavedGuard(dirty);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const activeCount = options.filter((o) => o.title.trim() && o.active).length;
   const blocker = saveBlocker(options, loaded);
@@ -97,11 +105,6 @@ export function PaymentSettingsScreen() {
 
   return (
     <div className="min-w-0">
-      <PageHeader
-        title="Оплата"
-        subtitle="Покупатель платит онлайн через monobank: всю сумму или предоплату, остаток — наложкой."
-      />
-
       <MonobankCard
         status={monoQ.data}
         loading={monoQ.isLoading}
