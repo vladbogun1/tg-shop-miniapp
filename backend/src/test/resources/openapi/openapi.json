@@ -15423,6 +15423,9 @@
           "overridden" : {
             "type" : "boolean"
           },
+          "subgroup" : {
+            "type" : "string"
+          },
           "type" : {
             "enum" : [
               "INT",
@@ -15456,6 +15459,7 @@
           "min",
           "options",
           "overridden",
+          "subgroup",
           "type",
           "unit",
           "updatedAt",

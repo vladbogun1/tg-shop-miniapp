@@ -100,7 +100,7 @@ class AiNotifierTest {
 
         verify(push).notifyAdmins(msg.capture(), any(LongPredicate.class));
         assertThat(msg.getValue().body()).contains("336 из 420 ₴").contains("Осталось 23 дня");
-        assertThat(msg.getValue().url()).isEqualTo("/settings#group-ai");
+        assertThat(msg.getValue().url()).isEqualTo("/settings/ai");
     }
 
     @Test

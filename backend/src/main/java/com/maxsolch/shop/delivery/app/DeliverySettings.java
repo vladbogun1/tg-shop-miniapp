@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.maxsolch.shop.settings.domain.SettingDefinition.boolSetting;
 import static com.maxsolch.shop.settings.domain.SettingDefinition.intSetting;
@@ -62,12 +63,51 @@ public class DeliverySettings implements SettingsContribution {
                                 + "Отправитель (кабинет, отделение отправки) — в блоке «Отправитель Новой почты»."));
     }
 
+    /** Tabs of the «Доставка» settings page; every key of the group is on exactly one of them. */
+    public static final String TAB_CHECKOUT = "checkout";
+    public static final String TAB_TTN = "ttn";
+    public static final String TAB_BOXES = "boxes";
+    public static final String TAB_TRACKING = "tracking";
+
+    private static final Map<String, String> TAB = Map.ofEntries(
+            Map.entry(NP_POSTOMAT_ENABLED, TAB_CHECKOUT),
+            Map.entry(NP_COURIER_ENABLED, TAB_CHECKOUT),
+            Map.entry(NP_CHECKOUT_ESTIMATE, TAB_CHECKOUT),
+            Map.entry(NP_COD_FEE_PCT, TAB_CHECKOUT),
+            Map.entry(NP_COD_FEE_FIXED, TAB_CHECKOUT),
+            Map.entry(NP_TARIFF_TOLERANCE_PCT, TAB_CHECKOUT),
+            Map.entry(NP_AUTO_CREATE_TTN, TAB_TTN),
+            Map.entry(NP_AUTO_UPDATE_TTN, TAB_TTN),
+            Map.entry(NP_CARGO_DESCRIPTION, TAB_TTN),
+            Map.entry(NP_DOCUMENTS_ENABLED, TAB_TTN),
+            Map.entry(NP_DOCUMENTS_CATEGORIES, TAB_TTN),
+            Map.entry(NP_DOCUMENTS_MAX_WEIGHT_G, TAB_TTN),
+            Map.entry(NP_DEFAULT_WEIGHT_G, TAB_BOXES),
+            Map.entry(NP_DEFAULT_LENGTH_MM, TAB_BOXES),
+            Map.entry(NP_DEFAULT_WIDTH_MM, TAB_BOXES),
+            Map.entry(NP_DEFAULT_HEIGHT_MM, TAB_BOXES),
+            Map.entry(NP_BOX_PRESETS, TAB_BOXES),
+            Map.entry(NP_BOX_FILL_PCT, TAB_BOXES),
+            Map.entry(NP_POSTOMAT_MAX_KG, TAB_BOXES),
+            Map.entry(NP_POSTOMAT_MAX_BOX, TAB_BOXES),
+            Map.entry(NOVAPOSHTA_AUTO_SYNC, TAB_TRACKING),
+            Map.entry(NP_SHIP_ON_ACCEPT, TAB_TRACKING),
+            Map.entry(NP_TRACKING, TAB_TRACKING),
+            Map.entry(NP_AUTO_DELIVER, TAB_TRACKING),
+            Map.entry(NP_NOTIFY_ARRIVAL, TAB_TRACKING),
+            Map.entry(NP_STORAGE_REMINDER, TAB_TRACKING),
+            Map.entry(NP_ARRIVED_STALE_DAYS, TAB_TRACKING),
+            Map.entry(NP_CREATED_STALE_DAYS, TAB_TRACKING),
+            Map.entry(NP_TRACKING_MAX_DAYS, TAB_TRACKING),
+            Map.entry(NP_STATUS_OVERRIDES, TAB_TRACKING));
+
     @Override
     public List<SettingDefinition> definitions() {
         List<SettingDefinition> all = new ArrayList<>(checkoutAndTracking());
         all.addAll(parcels());
         all.addAll(limits());
-        return all;
+        // A key missing from TAB lands on «Прочее» in the admin (null), never disappears.
+        return all.stream().map(d -> d.withSubgroup(TAB.get(d.key()))).toList();
     }
 
     private static List<SettingDefinition> checkoutAndTracking() {

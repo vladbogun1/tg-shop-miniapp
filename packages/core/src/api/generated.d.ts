@@ -10620,6 +10620,7 @@ export interface components {
             min: number;
             options: components["schemas"]["SettingsSettingDefinitionOption"][];
             overridden: boolean;
+            subgroup: string;
             /** @enum {string} */
             type: "INT" | "BOOL" | "STRING" | "TEXT" | "SELECT";
             unit: string;

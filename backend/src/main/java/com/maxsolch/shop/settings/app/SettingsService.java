@@ -348,7 +348,8 @@ public class SettingsService {
                 d.min(), d.max(), d.maxLength(), d.unit(),
                 stored == null ? null : stored.updatedAt(),
                 stored == null ? null : stored.updatedByName(),
-                d.options());
+                d.options(),
+                d.subgroup());
     }
 
     private boolean isFinanceOnly(SettingDefinition d) {

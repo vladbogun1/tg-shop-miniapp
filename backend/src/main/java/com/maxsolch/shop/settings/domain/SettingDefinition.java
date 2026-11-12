@@ -16,6 +16,8 @@ package com.maxsolch.shop.settings.domain;
  * @param unit         short unit for the UI ("мин", "дн.", "шт"), may be null
  * @param options      SELECT only: the allowed values with their Russian labels
  * @param check        STRING/TEXT only: extra rule of this setting applied to the trimmed text, may be null
+ * @param subgroup     tab inside a large group on the admin page (Nova Poshta: {@code checkout}, {@code ttn},
+ *                     {@code boxes}, {@code tracking}); null for a group shown as one list
  */
 public record SettingDefinition(
         String key,
@@ -29,7 +31,8 @@ public record SettingDefinition(
         Integer maxLength,
         String unit,
         java.util.List<Option> options,
-        Check check) {
+        Check check,
+        String subgroup) {
 
     /** One choice of a SELECT setting. */
     public record Option(String value, String label) {
@@ -44,17 +47,22 @@ public record SettingDefinition(
     public SettingDefinition(String key, String group, SettingType type, String label, String description,
                              String defaultValue, Long min, Long max, Integer maxLength, String unit,
                              java.util.List<Option> options) {
-        this(key, group, type, label, description, defaultValue, min, max, maxLength, unit, options, null);
+        this(key, group, type, label, description, defaultValue, min, max, maxLength, unit, options, null, null);
     }
 
     public SettingDefinition(String key, String group, SettingType type, String label, String description,
                              String defaultValue, Long min, Long max, Integer maxLength, String unit) {
-        this(key, group, type, label, description, defaultValue, min, max, maxLength, unit, null, null);
+        this(key, group, type, label, description, defaultValue, min, max, maxLength, unit, null, null, null);
     }
 
     public SettingDefinition withCheck(Check rule) {
         return new SettingDefinition(key, group, type, label, description, defaultValue, min, max, maxLength, unit,
-                options, rule);
+                options, rule, subgroup);
+    }
+
+    public SettingDefinition withSubgroup(String tab) {
+        return new SettingDefinition(key, group, type, label, description, defaultValue, min, max, maxLength, unit,
+                options, check, tab);
     }
 
     public static SettingDefinition selectSetting(String key, String group, String label, String description,

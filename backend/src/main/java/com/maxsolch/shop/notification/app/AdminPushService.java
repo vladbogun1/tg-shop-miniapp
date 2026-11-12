@@ -203,7 +203,7 @@ public class AdminPushService {
             throw new DomainException.BadRequest(NotificationError.PUSH_NOT_SUBSCRIBED);
         }
         return sendTo(targets, new PushMessage("Проверка уведомлений",
-                "Уведомления MAXSOLCH Admin работают на этом устройстве", "/settings", "test", null, false));
+                "Уведомления MAXSOLCH Admin работают на этом устройстве", "/account", "test", null, false));
     }
 
     // ---- sending ----------------------------------------------------------------------------

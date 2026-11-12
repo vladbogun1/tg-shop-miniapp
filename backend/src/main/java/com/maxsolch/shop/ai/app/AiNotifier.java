@@ -31,7 +31,7 @@ import java.util.function.LongPredicate;
 public class AiNotifier {
 
     static final String KEY = "KEY";
-    private static final String URL = "/settings#group-ai";
+    private static final String URL = "/settings/ai";
     private static final String TASKS_URL = "/ai-tasks";
 
     private final AiAlertStore alerts;

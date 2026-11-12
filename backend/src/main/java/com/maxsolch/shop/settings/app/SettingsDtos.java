@@ -33,7 +33,9 @@ public final class SettingsDtos {
             Instant updatedAt,
             String updatedBy,
             /** SELECT only: the allowed values with labels; null for other types. */
-            List<SettingDefinition.Option> options) {
+            List<SettingDefinition.Option> options,
+            /** Tab inside a large group (Nova Poshta: checkout, ttn, boxes, tracking); null when the group is one list. */
+            String subgroup) {
     }
 
     public record SettingsGroupDto(String id, String title, String description) {
