@@ -14,7 +14,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { useIsSuperAdmin } from "@/features/staff";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
-import { isKnownSection, OTHER_SECTION, SECTIONS, visibleSections, type SettingsSection } from "../model/sections";
+import { isKnownSection, OTHER_SECTION, PAYMENT_PARAMS_TAB, SECTIONS, visibleSections, type SettingsSection } from "../model/sections";
 import { useSettingsQuery } from "../queries";
 import { SaveBar } from "./SaveBar";
 import { SectionContent } from "./SectionContent";
@@ -58,6 +58,8 @@ function SectionScreen({ id }: { id: string }) {
   const [paymentDirty, setPaymentDirty] = useState(false);
   // Один guard на страницу: у «Оплаты» правки способов оплаты и полей — разные формы, а вопрос — один.
   useUnsavedGuard(form.dirtyItems.length > 0 || paymentDirty);
+  // У «Оплаты» на вкладке «Способы оплаты» своя панель сохранения на том же месте — общая там не показывается.
+  const saveBarHere = id !== "payment" || target.tab === PAYMENT_PARAMS_TAB;
 
   const meta = section ?? SECTIONS.find((s) => s.id === id);
   const needsSettings = id === OTHER_SECTION || (meta?.groups.length ?? 0) > 0;
@@ -100,7 +102,7 @@ function SectionScreen({ id }: { id: string }) {
           </QueryState>
         )}
         <SaveBar
-          count={form.dirtyItems.length}
+          count={saveBarHere ? form.dirtyItems.length : 0}
           invalid={form.invalid}
           saving={form.saving}
           onDiscard={form.discard}
