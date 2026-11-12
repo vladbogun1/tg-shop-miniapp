@@ -30,7 +30,6 @@ import { expect, test as base } from "../lib/test";
  * control checks»): noise here, not an app error. Everything else still fails the test (and is recorded).
  */
 const test = base.extend<{ failOnPageErrors: void }>({
-  // An override keeps the base fixture's `auto`.
   failOnPageErrors: async ({ page }, use) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => {
