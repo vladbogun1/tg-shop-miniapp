@@ -60,7 +60,8 @@ final class SqlOwnership {
         own(m, "translation", "content_translations");
         own(m, "ai", "ai_usage", "ai_jobs", "ai_job_bodies", "ai_reserve", "ai_alerts", "ai_batches", "ai_apply_log", "ai_search_rest", "ai_files");
         own(m, "gift", "gift_case_items", "gift_case_tiers", "order_gift_cases");
-        own(m, "delivery", "nova_poshta_cities", "nova_poshta_warehouses", "order_shipments", "np_webhook_events");
+        own(m, "delivery", "nova_poshta_cities", "nova_poshta_warehouses", "order_shipments", "np_webhook_events",
+                "np_boxes", "np_packing_memory");
         own(m, "returns", "order_exchange_lines", "order_exchanges", "order_return_lines", "order_returns");
         own(m, "order", "order_item_lots", "order_idempotency", "order_items", "order_messages", "order_money_movements", "orders");
         own(m, "payment", "payment_invoices", "payment_options", "payment_receipts_sent", "payment_requisites",

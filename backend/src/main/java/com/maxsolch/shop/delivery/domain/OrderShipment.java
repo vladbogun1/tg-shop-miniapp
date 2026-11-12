@@ -159,6 +159,46 @@ public class OrderShipment {
     @Column(name = "quiet", nullable = false)
     private boolean quiet;
 
+    /** The box the system suggested when the waybill was made (V99), e.g. «Коробка 5 кг · 13 см». */
+    @Column(name = "box_suggested", length = 120)
+    private String boxSuggested;
+
+    /** Where the suggestion came from: «по прошлым заказам ×3» / «подобрано по размерам». */
+    @Column(name = "box_suggested_source", length = 60)
+    private String boxSuggestedSource;
+
+    /** The box the packer confirmed (V99); null = not confirmed yet. */
+    @Column(name = "box_label", length = 120)
+    private String boxLabel;
+
+    @Column(name = "box_id", columnDefinition = "BINARY(16)")
+    private byte[] boxId;
+
+    @Column(name = "box_height_mm")
+    private Integer boxHeightMm;
+
+    @Column(name = "box_confirmed_at")
+    private Instant boxConfirmedAt;
+
+    @Column(name = "box_confirmed_by", length = 255)
+    private String boxConfirmedBy;
+
+    /** Nova Poshta's own measure once it accepted the parcel (V99); our declared columns stay as sent. */
+    @Column(name = "np_weight_g")
+    private Integer npWeightG;
+
+    @Column(name = "np_volume_weight_g")
+    private Integer npVolumeWeightG;
+
+    @Column(name = "np_factual_weight_g")
+    private Integer npFactualWeightG;
+
+    @Column(name = "np_cost_minor")
+    private Long npCostMinor;
+
+    @Column(name = "np_measured_at")
+    private Instant npMeasuredAt;
+
     /** Poll and webhook may apply a status at once: the second one retries on fresh data. */
     @jakarta.persistence.Version
     @Column(name = "version", nullable = false)
@@ -179,6 +219,37 @@ public class OrderShipment {
 
     public ShipmentStage stageEnum() {
         return ShipmentStage.of(stage);
+    }
+
+    /** The packer's box: what it is called, the catalog box (null = typed-in sides), at what height. */
+    public void confirmBox(String label, byte[] box, Integer heightMm, Instant at, String by) {
+        boxLabel = label;
+        boxId = box;
+        boxHeightMm = heightMm;
+        boxConfirmedAt = at;
+        boxConfirmedBy = by;
+    }
+
+    /** The goods changed: a box confirmed for the old ones says nothing about the new. */
+    public void dropBoxConfirmation() {
+        confirmBox(null, null, null, null, null);
+    }
+
+    /**
+     * Nova Poshta's measure after acceptance: each value it reported replaces the last one, an absent one keeps it;
+     * {@code np_measured_at} is the first time.
+     */
+    public void recordNpMeasure(NpMeasure m, Instant at) {
+        if (m == null || m.empty()) {
+            return;
+        }
+        npWeightG = m.weightG() != null ? m.weightG() : npWeightG;
+        npVolumeWeightG = m.volumeWeightG() != null ? m.volumeWeightG() : npVolumeWeightG;
+        npFactualWeightG = m.factualWeightG() != null ? m.factualWeightG() : npFactualWeightG;
+        npCostMinor = m.costMinor() != null ? m.costMinor() : npCostMinor;
+        if (npMeasuredAt == null) {
+            npMeasuredAt = at;
+        }
     }
 
     /** Whether this waybill collects money: the stored flag, or (older rows) a non-zero COD. */
