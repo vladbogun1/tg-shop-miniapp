@@ -252,5 +252,7 @@ export function legacyAnchorTarget(hash: string): string | null {
   if (!hash.startsWith("#group-")) return null;
   const group = hash.slice("#group-".length);
   if (group === GIFT_GROUP) return "/gift";
+  // Поля «Оплаты и чеков» теперь на вкладке «Параметры», а не на первой («Способы оплаты»).
+  if (group === PAYMENT_GROUP) return "/settings/payment?tab=params";
   return `/settings/${sectionOfGroup(group)}`;
 }

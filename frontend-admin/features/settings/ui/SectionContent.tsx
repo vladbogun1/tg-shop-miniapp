@@ -60,8 +60,9 @@ function Groups({ groups, items, form, focusKey }: SectionContentProps) {
 
 /** «Оплата»: бывший экран /payment (своё сохранение) и поля группы «Оплата и чеки» (общий «Сохранить»). Обе вкладки смонтированы. */
 function PaymentContent(props: SectionContentProps) {
-  const tab = PAYMENT_TABS.some((t) => t.value === props.tab) ? (props.tab as string) : PAYMENT_TABS[0].value;
   const hasParams = props.groups.some((g) => g.id === PAYMENT_GROUP);
+  // Пока настройки не загрузились, «Параметров» ещё нет — показываем «Способы оплаты», а не пустую страницу.
+  const tab = hasParams && props.tab === "params" ? "params" : "methods";
   const tabs = hasParams ? [...PAYMENT_TABS] : [PAYMENT_TABS[0]];
   return (
     <div className="flex min-w-0 flex-col gap-4">

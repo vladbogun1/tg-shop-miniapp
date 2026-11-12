@@ -201,7 +201,7 @@ public class ShipmentStatusApplier {
         String key = NpJson.cut(code.trim(), 8) + (text == null || text.isBlank() ? ""
                 : " «" + NpJson.cut(text.trim(), 60) + "»");
         String head = "Новая почта прислала статусы, которых нет в таблице: ";
-        String tail = " — стадия посылок не меняется. Привяжите коды в «Настройки» → «Новая почта» → «Свои коды статусов».";
+        String tail = " — стадия посылок не меняется. Привяжите коды в «Настройки» → «Доставка» → «Отслеживание» → «Свои коды статусов».";
         String known = alerts.get(NpAlerts.Kind.STATUS_CODES).map(NpAlerts.Alert::text)
                 .filter(t -> t.startsWith(head) && t.endsWith(tail))
                 .map(t -> t.substring(head.length(), t.length() - tail.length())).orElse("");

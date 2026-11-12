@@ -46,6 +46,7 @@ describe("разделы настроек", () => {
     expect(legacyAnchorTarget("#group-ai")).toBe("/settings/ai");
     expect(legacyAnchorTarget("#group-costing")).toBe("/settings/stock");
     expect(legacyAnchorTarget("#site")).toBe("/settings/site");
+    expect(legacyAnchorTarget("#group-payment")).toBe("/settings/payment?tab=params");
     expect(legacyAnchorTarget("#group-unknown")).toBe("/settings/other");
     expect(legacyAnchorTarget("#setting-x")).toBeNull();
   });

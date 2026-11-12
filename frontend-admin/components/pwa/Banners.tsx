@@ -5,7 +5,7 @@
  *  - UpdateBanner: a new version is downloaded — «Обновить приложение» (nothing reloads by itself).
  *  - InstallBanner (phones, in the browser only): Android — Chrome's install dialog behind our
  *    button; iPhone Safari — how to add it to the home screen. «×» hides it for good; the same
- *    actions stay in «Настройки → Приложение».
+ *    actions stay in «Мой аккаунт → Это устройство».
  *  - PushOfferBanner: renews this device's push subscription; offers «Включить уведомления» when
  *    there is none (e.g. after «Выйти везде»), «Позже» snoozes it on this device.
  */
@@ -143,7 +143,7 @@ export function InstallBanner() {
  * «Включить уведомления» on this device. Renews a live subscription silently (the server may have
  * dropped it); when there is none — never enabled here, or «Выйти везде» / password change / 2FA
  * reset removed every subscription of the admin — offers to turn push on. «Позже» hides the offer
- * on this device for a month (lib/push.ts); the same switch lives in «Настройки → Приложение».
+ * on this device for a month (lib/push.ts); the same switch lives in «Мой аккаунт → Это устройство».
  * Not shown where push cannot work: no Push API, iPhone outside the installed app, permission
  * denied, push not configured on the server.
  */

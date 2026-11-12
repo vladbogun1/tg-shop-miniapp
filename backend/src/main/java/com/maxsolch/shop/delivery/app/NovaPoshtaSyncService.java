@@ -99,7 +99,7 @@ public class NovaPoshtaSyncService {
     }
 
     /**
-     * The nightly trigger: the admin can pause it (Настройки → Новая Почта) while the NP API misbehaves; the startup
+     * The nightly trigger: the admin can pause it (Настройки → Доставка → Отслеживание) while the NP API misbehaves; the startup
      * sync of an empty table still runs, without it checkout has no warehouses.
      */
     void syncIfEnabled() {
@@ -179,7 +179,7 @@ public class NovaPoshtaSyncService {
         } else {
             alerts.raise(NpAlerts.Kind.SENDER_BRANCH, "Отделение отправки закрыто или пропало из справочника: "
                     + String.join(", ", closed) + ". ТТН с него не создаются — выберите другое в «Настройки» → "
-                    + "«Новая почта».");
+                    + "«Доставка» → «ТТН и отправитель».");
         }
     }
 

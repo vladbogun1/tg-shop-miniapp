@@ -205,7 +205,7 @@ class ShipmentPreparation {
     private NovaPoshtaSenderService.SenderWarehouse senderBranch(NovaPoshtaSenderService.SenderConfig cfg, Options o,
                                                                  OrderShipment active, List<String> problems) {
         if (cfg == null || !cfg.complete()) {
-            problems.add("Отправитель не настроен — «Настройки» → «Новая почта» → «Загрузить из кабинета НП»");
+            problems.add("Отправитель не настроен — «Настройки» → «Доставка» → «ТТН и отправитель» → «Загрузить из кабинета НП»");
             return null;
         }
         String stored = active != null && OrderShipment.ORIGIN_API.equals(active.getOrigin())

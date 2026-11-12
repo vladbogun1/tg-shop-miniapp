@@ -37,7 +37,7 @@ export function RecipientFields({ form, set }: FieldProps) {
 
 export function SenderChips({ form, set, warehouses }: FieldProps & { warehouses: SenderWarehouse[] }) {
   if (warehouses.length === 0) {
-    return <Notice tone="warn">Отделение отправки не выбрано — настройте отправителя в «Настройки → Новая Почта».</Notice>;
+    return <Notice tone="warn">Отделение отправки не выбрано — настройте отправителя в «Настройки → Доставка → ТТН и отправитель».</Notice>;
   }
   return (
     <div className="min-w-0">

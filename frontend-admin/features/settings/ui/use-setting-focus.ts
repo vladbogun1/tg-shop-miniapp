@@ -13,7 +13,12 @@ const MAX_FRAMES = 30;
 const FLASH = [{ boxShadow: "0 0 0 3px rgba(255,102,0,.6)" }, { boxShadow: "0 0 0 3px rgba(255,102,0,.6)", offset: 0.6 }, { boxShadow: "0 0 0 0 rgba(255,102,0,0)" }];
 
 function readTarget(): string | null {
-  const h = decodeURIComponent(window.location.hash.slice(1));
+  let h: string;
+  try {
+    h = decodeURIComponent(window.location.hash.slice(1));
+  } catch {
+    return null; // битый якорь (`%E0%A4%A`) — просто без подсветки
+  }
   return h.startsWith(SETTING_PREFIX) || h.startsWith("np-") ? h : null;
 }
 
