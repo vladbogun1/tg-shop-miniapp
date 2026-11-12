@@ -39,5 +39,8 @@ test("телефон: список статусов, поиск, карточк�
 
   await close.click();
   await expect(drawer).toBeHidden();
+  // The leaving drawer is aria-hidden at once (PresenceLayer), so the dialog is gone for getByRole while its
+  // text is still in the DOM until the exit animation ends.
+  await expect(card).toHaveCount(1);
   await expect(card).toBeVisible();
 });
