@@ -8,23 +8,32 @@ import { logout } from "@/lib/session";
 import { cn } from "@/lib/cn";
 import { useLogoutEverywhere } from "@/features/staff";
 import { NavLinks } from "./NavLinks";
-import { isActive } from "./nav-config";
+import { SETTINGS_ITEM, isActive, type NavItem } from "./nav-config";
 
-/** «Мой аккаунт» sits in the footer next to «Выйти» — it is about the admin, not the shop. */
-function AccountLink({
+/**
+ * Footer links: «Настройки» (the shop's settings, active on every /settings/*) and «Мой аккаунт»
+ * next to «Выйти» — about the admin, not the shop.
+ */
+function FooterLink({
+  href,
+  label,
+  icon: Icon,
   collapsed = false,
   onNavigate,
 }: {
+  href: string;
+  label: string;
+  icon: NavItem["icon"];
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const active = isActive(pathname, "/account");
+  const active = isActive(pathname, href);
   return (
     <Link
-      href="/account"
+      href={href}
       onClick={onNavigate}
-      title={collapsed ? "Мой аккаунт" : undefined}
+      title={collapsed ? label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
         "font-display flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] py-2 text-[14px] font-semibold transition-colors lg:min-h-10",
@@ -34,13 +43,13 @@ function AccountLink({
           : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
       )}
     >
-      <UserRound
+      <Icon
         className={cn(
           "h-[18px] w-[18px] shrink-0",
           active ? "text-[var(--accent)]" : "text-[var(--text-faint)]",
         )}
       />
-      <span className={cn(collapsed && "sr-only")}>Мой аккаунт</span>
+      <span className={cn(collapsed && "sr-only")}>{label}</span>
     </Link>
   );
 }
@@ -115,7 +124,20 @@ export function SidebarInner({
         layoutScope={layoutScope}
       />
       <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--line)] pt-3">
-        <AccountLink collapsed={collapsed} onNavigate={onNavigate} />
+        <FooterLink
+          href={SETTINGS_ITEM.href}
+          label={SETTINGS_ITEM.label}
+          icon={SETTINGS_ITEM.icon}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+        />
+        <FooterLink
+          href="/account"
+          label="Мой аккаунт"
+          icon={UserRound}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+        />
         <button
           onClick={logout}
           title={collapsed ? "Выйти" : undefined}

@@ -1,5 +1,13 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+
+/**
+ * Что оболочка рисует сразу под шапкой каждой страницы — строка вкладок раздела. Слот, а не импорт:
+ * вкладкам нужны счётчики фич, а фичи сами рисуют PageHeader (был бы цикл импортов).
+ */
+export const PageHeaderSlot = createContext<ReactNode>(null);
 
 /** Screen heading: Exo 2 800 caps title (desktop; on a phone the top bar shows it) + muted subtitle + actions. */
 export function PageHeader({
@@ -13,15 +21,19 @@ export function PageHeader({
   actions?: ReactNode;
   className?: string;
 }) {
+  const below = useContext(PageHeaderSlot);
   return (
-    <div className={cn("mb-4 flex flex-wrap items-end justify-between gap-3 lg:mb-5", className)}>
-      <div>
-        {/* On a phone the shell's top bar already shows the title — no second one (kept for screen readers). */}
-        <h1 className="page-title max-lg:sr-only text-[26px] leading-tight">{title}</h1>
-        {subtitle && <p className="text-[13px] leading-snug text-[var(--text-muted)] lg:mt-1 lg:text-[14px]">{subtitle}</p>}
+    <>
+      <div className={cn("mb-4 flex flex-wrap items-end justify-between gap-3 lg:mb-5", className)}>
+        <div>
+          {/* On a phone the shell's top bar already shows the title — no second one (kept for screen readers). */}
+          <h1 className="page-title max-lg:sr-only text-[26px] leading-tight">{title}</h1>
+          {subtitle && <p className="text-[13px] leading-snug text-[var(--text-muted)] lg:mt-1 lg:text-[14px]">{subtitle}</p>}
+        </div>
+        {/* max-w-full: a wide segmented control scrolls inside itself instead of pushing the page sideways. */}
+        {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {/* max-w-full: a wide segmented control scrolls inside itself instead of pushing the page sideways. */}
-      {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
-    </div>
+      {below}
+    </>
   );
 }

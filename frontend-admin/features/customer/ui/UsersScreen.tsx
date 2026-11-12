@@ -46,7 +46,7 @@ export function UsersScreen({
 
   return (
     <div className="min-w-0">
-      <PageHeader title="Пользователи" subtitle="Пользователи бота, их заказы и аналитика" />
+      <PageHeader title="Покупатели" subtitle="Пользователи бота, их заказы и аналитика" />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl<Tab>

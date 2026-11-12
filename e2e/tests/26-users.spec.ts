@@ -1,5 +1,5 @@
 /**
- * «Пользователи»: search (name, @username, id), the «Заблокировали бота» filter, sorting by money,
+ * «Покупатели» (бывшие «Пользователи»): search (name, @username, id), the «Заблокировали бота» filter, sorting by money,
  * the profile drawer (orders count, money spent, the customer's orders → order card) and the
  * «Аналитика» tab. Numbers are checked against the seed (rejected orders do not count as spent).
  */
@@ -34,7 +34,7 @@ function moneyRe(hryvnias: number): RegExp {
 
 test("поиск по имени, @username и ID; фильтр «Заблокировали бота»; сортировка по сумме", async ({ page, api }) => {
   await page.goto("/users");
-  await expect(page.getByRole("heading", { name: "Пользователи", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Покупатели", level: 1 })).toBeVisible();
   const search = page.getByPlaceholder("Поиск: имя, @username, ID");
 
   // By surname: one row, with the seeded numbers (2 orders, 1000 + 200 ₴).

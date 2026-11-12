@@ -4,9 +4,10 @@
  *  - «Поддержка» = «Ждут ответа» on /support;
  *  - «Отзывы» = «На модерации» on /reviews;
  *  - «Переводы» = «Нужно перевести» + «Устарели» on /translations;
- *  - «Карточки» = «Оформить» + «Проверить» on /cards with the default storefront filter. Regression:
- *    an OLD hidden product with card_status AI_FILLED (seed: «E2E Старый плеер») must not be counted
- *    — the badge used to say 2 while both tabs were empty.
+ *  - «Карточки» (menu) = its two section tabs: «Карточки» (= «Оформить» + «Проверить» on /cards with
+ *    the default storefront filter) + «ИИ-задачи» (= review + problems of /api/admin/ai/summary).
+ *    Regression: an OLD hidden product with card_status AI_FILLED (seed: «E2E Старый плеер») must not
+ *    be counted — the badge used to say 2 while both tabs were empty.
  *  - a folded section shows the sum of its badges.
  * Read-only: no spec state is changed here.
  */
@@ -22,13 +23,23 @@ async function badge(page: Page, prefix: string): Promise<number> {
   return Number(label.match(/(\d+)$/)?.[1]);
 }
 
+/** The menu badge of «Карточки»: cards + AI tasks (variant B — «ИИ-задачи» is a tab of «Карточки»). */
+const CARDS_MENU = "Ждут в разделе «Карточки»";
+
+/** The counter on a section tab (the link row under the page header); 0 when not shown. */
+async function tabBadge(page: Page, prefix: string): Promise<number> {
+  const b = page.getByRole("navigation", { name: /^Раздел/ }).getByLabel(new RegExp(`^${prefix}: \\d+$`));
+  if ((await b.count()) === 0) return 0;
+  return Number(((await b.first().getAttribute("aria-label")) ?? "").match(/(\d+)$/)?.[1]);
+}
+
 /** «Оформить 3» — the counter of a segmented / tab control. */
 async function counter(loc: Locator): Promise<number> {
   const t = (await loc.innerText()).replace(/\s+/g, " ").trim();
   return Number(t.match(/(\d+)$/)?.[1] ?? 0);
 }
 
-test("«Карточки»: бейдж = «Оформить» + «Проверить»; старый скрытый товар от ИИ не считается", async ({ page, api }) => {
+test("«Карточки»: бейдж = «Оформить» + «Проверить» + ИИ-задачи; старый скрытый товар от ИИ не считается", async ({ page, api }) => {
   const stats = (await api.raw("get", "/api/admin/cards/stats")).body as { draft: number; aiFilled: number };
   // The old hidden AI_FILLED product exists and is AI_FILLED…
   const exp = await api.raw("get", `/api/admin/cards/export?status=ai_filled&ids=${EXTRA_PRODUCT.oldPlayer}`);
@@ -42,7 +53,11 @@ test("«Карточки»: бейдж = «Оформить» + «Провери
   await expect(tab("Готово")).toBeVisible();
   const draft = await counter(tab("Оформить"));
   const review = await counter(tab("Проверить"));
-  await expect.poll(() => badge(page, "Карточек ждут оформления или проверки")).toBe(draft + review);
+  const ai = (await api.raw("get", "/api/admin/ai/summary")).body as { review?: number; problems?: number };
+  const aiWaiting = (ai.review ?? 0) + (ai.problems ?? 0);
+  await expect.poll(() => badge(page, CARDS_MENU)).toBe(draft + review + aiWaiting);
+  await expect.poll(() => tabBadge(page, "Карточек ждут оформления или проверки")).toBe(draft + review);
+  await expect.poll(() => tabBadge(page, "ИИ-задач ждут проверки или со сбоем")).toBe(aiWaiting);
   expect(stats.draft + stats.aiFilled, "API stats = вкладки").toBe(draft + review);
 
   // With «Все, со старыми» the old player appears in «Проверить» — so it is +1 there, not in the badge.
@@ -54,7 +69,7 @@ test("«Карточки»: бейдж = «Оформить» + «Провери
   await tab("Проверить").click();
   await page.getByLabel("Поиск карточек").fill("E2E Старый плеер");
   await expect(page.getByRole("listitem").filter({ hasText: "E2E Старый плеер" })).toHaveCount(1);
-  expect(await badge(page, "Карточек ждут оформления или проверки")).toBe(draft + review);
+  expect(await badge(page, CARDS_MENU)).toBe(draft + review + aiWaiting);
 });
 
 test("«Внимание», «Поддержка», «Отзывы», «Переводы»: бейдж = число на странице", async ({ page, api }) => {
@@ -103,7 +118,7 @@ test("свёрнутый раздел меню показывает сумму �
   const nav = page.getByRole("complementary").first();
   await expect(nav.getByRole("link", { name: /Карточки/ })).toBeAttached();
   const sumCatalog =
-    (await badge(page, "Карточек ждут оформления или проверки")) +
+    (await badge(page, CARDS_MENU)) +
     (await badge(page, "Нужно перевести")) +
     (await badge(page, "Отзывов на модерации"));
   // Fold «Каталог» (open by default).

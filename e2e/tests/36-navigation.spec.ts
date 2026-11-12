@@ -1,7 +1,8 @@
 /**
  * Links that come from outside the admin: /orders/{id} (bot notifications, push), with ?tab=chat;
- * the old «Теги» bookmark /tags → «Категории»; every menu section opens without a crash or a failed
- * API call.
+ * the old «Теги» bookmark /tags → «Категории»; every menu section (and every section tab) opens without a
+ * crash or a failed API call; section tabs (variant B): links between pages, the menu item stays lit,
+ * «Настройки» lives in the sidebar footer.
  */
 import { CUSTOMER, ORDER, shortId } from "../lib/seed";
 import { expect, orderDrawer, test } from "../lib/test";
@@ -35,15 +36,19 @@ const SECTIONS: [string, string][] = [
   ["/support", "Поддержка"],
   ["/products", "Товары"],
   ["/cards", "Карточки"],
+  ["/ai-tasks", "ИИ-задачи"],
   ["/categories", "Категории"],
   ["/brands", "Бренды"],
   ["/translations", "Переводы"],
   ["/reviews", "Отзывы"],
-  ["/users", "Пользователи"],
+  ["/users", "Покупатели"],
   ["/broadcasts", "Рассылки"],
   ["/promocodes", "Промокоды"],
+  ["/gift", "Кейс"],
   ["/metrics", "Метрики"],
+  ["/writeoffs", "Списания"],
   ["/audit", "Журнал"],
+  ["/incidents", "Инциденты"],
   ["/payment", "Оплата"],
   ["/settings", "Настройки"],
   ["/admins", "Админы"],
@@ -63,4 +68,28 @@ test("каждый раздел меню открывается без ошиб�
     await expect(page.getByText("Не удалось загрузить"), path).toHaveCount(0);
   }
   expect(failed).toEqual([]);
+});
+
+test("вкладки раздела: «Категории» ведут на «Товары» и «Бренды», пункт «Товары» горит на «Брендах»", async ({ page }) => {
+  await page.goto("/categories");
+  const tabs = page.getByRole("navigation", { name: "Раздел «Товары»" });
+  await expect(tabs.getByRole("link", { name: "Категории" })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Бренды" }).click();
+  await expect(page).toHaveURL(/\/brands$/);
+  await expect(page.getByRole("heading", { name: "Бренды", level: 1 })).toBeVisible();
+  const menu = page.getByRole("complementary").first();
+  await expect(menu.getByRole("link", { name: "Товары", exact: true })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Товары" }).click();
+  await expect(page).toHaveURL(/\/products$/);
+  await expect(page.getByRole("heading", { name: "Товары", level: 1 })).toBeVisible();
+
+  // Реестр подарков — внутри вкладки «Кейс» раздела «Акции».
+  await page.goto("/gift/registry");
+  const promo = page.getByRole("navigation", { name: "Раздел «Акции»" });
+  await expect(promo.getByRole("link", { name: "Кейс" })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Акции" })).toHaveAttribute("aria-current", "page");
+
+  // «Настройки» — внизу меню, без блока «Система».
+  await expect(menu.getByRole("link", { name: "Настройки" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: /^Система/ })).toHaveCount(0);
 });

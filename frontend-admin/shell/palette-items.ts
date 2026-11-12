@@ -1,4 +1,4 @@
-import { PRIMARY, SECTIONS, type NavItem } from "./nav-config";
+import { PALETTE_EXTRA, PRIMARY, SECTIONS, visibleTabs, type NavItem } from "./nav-config";
 
 export interface PaletteEntry {
   /** Ключ строки; у разделов — их адрес. */
@@ -16,14 +16,31 @@ export interface PaletteEntry {
 /** Раздел меню как строка палитры. */
 export type PaletteItem = PaletteEntry;
 
-/** Разделы для палитры из nav-config — с тем же фильтром superOnly, что и в меню. */
+const entry = (href: string, label: string, group: string, icon: NavItem["icon"]): PaletteItem => ({ key: href, href, label, group, icon });
+
+/**
+ * Пункт меню как строки палитры: без вкладок — одна строка; с вкладками — строка на каждую видимую
+ * вкладку, а название пункта уходит в группу («Категории» — «Каталог · Товары»), чтобы поиск «акции»
+ * нашёл и «Промокоды», и «Кейс».
+ */
+function itemEntries(item: NavItem, section: string, superAdmin: boolean | undefined): PaletteItem[] {
+  if (!item.tabs) return [entry(item.href, item.label, section, item.icon)];
+  return visibleTabs(item, superAdmin).map((t) =>
+    entry(t.href, t.label, t.label === item.label ? section : `${section} · ${item.label}`, t.icon ?? item.icon),
+  );
+}
+
+/** Разделы для палитры из nav-config — с тем же фильтром superOnly, что и в меню, плюс страницы настроек. */
 export function paletteItems(superAdmin: boolean | undefined): PaletteItem[] {
-  const out: PaletteItem[] = PRIMARY.map((i) => ({ key: i.href, href: i.href, label: i.label, group: "Главное", icon: i.icon }));
+  const out: PaletteItem[] = PRIMARY.map((i) => entry(i.href, i.label, "Главное", i.icon));
   for (const sec of SECTIONS) {
     for (const i of sec.items) {
       if (i.superOnly && !superAdmin) continue;
-      out.push({ key: i.href, href: i.href, label: i.label, group: sec.title, icon: i.icon });
+      out.push(...itemEntries(i, sec.title, superAdmin));
     }
+  }
+  for (const i of PALETTE_EXTRA) {
+    if (!i.superOnly || superAdmin) out.push(entry(i.href, i.label, "Настройки", i.icon));
   }
   return out;
 }
