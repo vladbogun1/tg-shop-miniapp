@@ -533,7 +533,8 @@ test.describe("2. exit hang (clock paused)", () => {
         await page.goto("/");
         await openPeriodSheet(page);
       },
-      close: "div.fixed.inset-0.z-\\[160\\] > div",
+      // The backdrop: `> div` alone also matches the sheet panel, and the probe clicks the last match.
+      close: "div.fixed.inset-0.z-\\[160\\] > div:first-child",
     },
     { name: "Drawer (order card)", open: openOrderFromBoard, close: DIALOG_CLOSE },
     {
