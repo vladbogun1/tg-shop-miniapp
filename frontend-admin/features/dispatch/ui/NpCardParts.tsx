@@ -1,10 +1,10 @@
 "use client";
 
-/** Части карточки «Отправки» для Новой Почты: галочка пакета и бейджи (стадия, «ТТН устарела», тип доставки, «при получении»). */
+/** Части карточки «Отправки» для Новой Почты: галочка пакета и бейджи (стадия, «ТТН устарела», «Коробка не подтверждена», тип доставки, «при получении»). */
 import { Badge } from "@/components/ui/Badge";
 import { serviceLabel, ShipmentStageBadge } from "@/features/delivery";
 import type { AdminDispatchOrder } from "@/features/order";
-import { isStale } from "../model/batch";
+import { isStale, isUnconfirmed } from "../model/batch";
 
 export function TickBox({ o, ticked, onTick }: { o: AdminDispatchOrder; ticked: boolean; onTick: () => void }) {
   return (
@@ -24,10 +24,12 @@ export function NpBadges({ o }: { o: AdminDispatchOrder }) {
   // Отделение — обычный случай, бейдж только для почтомата и курьера.
   const courierOrPostomat = !!o.npServiceType && o.npServiceType !== "WAREHOUSE";
   if (!o.shipmentStage && !isStale(o) && !courierOrPostomat && !o.paymentOnDelivery) return null;
+  const unconfirmed = isUnconfirmed(o) && !isStale(o);
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       {o.shipmentStage && <ShipmentStageBadge stage={o.shipmentStage} />}
       {isStale(o) && <Badge tone="danger">ТТН устарела</Badge>}
+      {unconfirmed && <Badge tone="warn">Коробка не подтверждена</Badge>}
       {courierOrPostomat && <Badge tone="neutral">{serviceLabel(o.npServiceType)}</Badge>}
       {o.paymentOnDelivery && <Badge tone="warn">при получении</Badge>}
     </div>

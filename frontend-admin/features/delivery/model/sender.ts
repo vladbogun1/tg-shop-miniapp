@@ -1,7 +1,5 @@
-/** Правки отправителя без React: отделения отправки и «по умолчанию», подпись коробки. */
-import { money } from "@shop/core/money";
-import { cmText } from "./format";
-import type { BoxPreset, NpBranch, SenderConfig } from "./types";
+/** Правки отправителя без React: отделения отправки и «по умолчанию». */
+import type { NpBranch, SenderConfig } from "./types";
 
 /** Отделение по умолчанию: заданное или первое в списке. */
 export function defaultBranchRef(cfg: Pick<SenderConfig, "warehouses" | "defaultWarehouseRef">): string | null {
@@ -22,10 +20,3 @@ export function removeBranch(cfg: SenderConfig, ref: string): SenderConfig {
   return { ...cfg, warehouses: rest, defaultWarehouseRef: def };
 }
 
-/** «Мала: 20×15×10 / тара 120 г / 15 ₴» — коробка, как её видно в окне ТТН. */
-export function presetText(p: BoxPreset): string {
-  const parts = [`${cmText(p.lengthMm)}×${cmText(p.widthMm)}×${cmText(p.heightMm)}`];
-  if (p.tareG) parts.push(`тара ${p.tareG} г`);
-  if (p.packMinor) parts.push(money(p.packMinor));
-  return `${p.name}: ${parts.join(" / ")}`;
-}

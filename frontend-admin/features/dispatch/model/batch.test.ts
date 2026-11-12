@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { batchScope, isPrintable, pickBranch } from "./batch";
+import { batchScope, isPrintable, isUnconfirmed, pickBranch } from "./batch";
 
 const np = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -40,6 +40,20 @@ describe("batchScope", () => {
     expect(s.selected.map((o) => o.id)).toEqual(["b"]);
     expect(s.toCreate).toEqual([]);
     expect(s.toPrint.map((o) => o.id)).toEqual(["b"]);
+  });
+});
+
+describe("коробка не подтверждена", () => {
+  const printed = (id: string, unconfirmed: boolean) =>
+    np(id, { shipmentOrigin: "API", shipmentStage: "CREATED", shipmentPacking: { unconfirmed } });
+  it("печать: все и только подтверждённые", () => {
+    const s = batchScope([printed("a", true), printed("b", false), np("c", { shipmentOrigin: "API", shipmentStage: "CREATED" })], new Set());
+    expect(s.toPrint.map((o) => o.id)).toEqual(["a", "b", "c"]);
+    expect(s.toPrintConfirmed.map((o) => o.id)).toEqual(["b", "c"]);
+  });
+  it("без блока упаковки — не считаем неподтверждённым", () => {
+    expect(isUnconfirmed(np("x"))).toBe(false);
+    expect(isUnconfirmed(printed("y", true))).toBe(true);
   });
 });
 

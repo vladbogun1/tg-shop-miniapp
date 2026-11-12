@@ -10,6 +10,10 @@ export { NP_PANELS, NpSettingsPanels, type NpPanelId } from "./ui/settings/NpSet
 export { ParcelSizeEditor } from "./ui/size/ParcelSizeEditor";
 export { CategoryParcelSize } from "./ui/size/CategoryParcelSize";
 export type { ShipmentMode } from "./model/shipment-form";
+export { BoxGlyph } from "./ui/boxes/BoxGlyph";
+export { BoxesPanel } from "./ui/boxes/BoxesPanel";
+export { PackBox } from "./ui/packing/PackBox";
+export { UNCONFIRMED_PRINT } from "./model/packing";
 
 export { npDirectoryApi, type BranchKind } from "./api";
 export { deliveryKeys } from "./keys";

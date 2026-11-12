@@ -25,6 +25,8 @@ import type { Shipment } from "../model/types";
 import { useCancelShipment, useRefreshShipment } from "../queries";
 import { LabelPrint } from "./LabelPrint";
 import { ShipmentFacts } from "./ShipmentFacts";
+import { UNCONFIRMED_PRINT } from "../model/packing";
+import { ShipmentPacking } from "./packing/ShipmentPacking";
 import { ShipmentStageBadge } from "./parts";
 import { StaleBanner, StaleDialog } from "./StaleShipment";
 import { useStaleShipment, type StaleState } from "./use-stale";
@@ -121,6 +123,7 @@ function ShipmentActions({
           orderIds={[order.id]}
           disabled={st.stale || st.settling}
           disabledTitle={st.stale ? "ТТН устарела — сначала перестворите её" : "Обновляем ТТН…"}
+          confirmFirst={s.packing?.unconfirmed ? UNCONFIRMED_PRINT : undefined}
         />
       )}
       {editable && (
@@ -161,6 +164,7 @@ function ShipmentView({
       {st.stale ? <StaleBanner reasons={st.reasons} printed={!!s.printedAt} onRemake={() => onModal("remake")} /> : <StatusHint s={s} st={st} open={open} />}
       {s.statusText && <p className="break-words text-[13px] leading-snug text-[var(--text)]">{s.statusText}</p>}
       <ShipmentFacts s={s} currency={order.currency ?? "UAH"} />
+      <ShipmentPacking orderId={order.id} s={s} open={open} onChanged={onChanged} />
       <PollLine s={s} />
       <ShipmentActions order={order} s={s} editable={editable} st={st} onEdit={() => onModal("edit")} onChanged={onChanged} />
       <StaleDialog

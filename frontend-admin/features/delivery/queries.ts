@@ -115,15 +115,6 @@ export function useCheckKey() {
   });
 }
 
-export function useBoxPresetsQuery() {
-  return useQuery({
-    queryKey: deliveryKeys.boxPresets(),
-    queryFn: npAdminApi.boxPresets,
-    staleTime: QUERY_PRESETS.static.staleTime,
-    retry: false,
-  });
-}
-
 export function useWebhookQuery() {
   return useQuery({ queryKey: deliveryKeys.webhook(), queryFn: npWebhookApi.status, retry: false });
 }

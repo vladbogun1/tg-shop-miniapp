@@ -3,9 +3,9 @@
 /** Строка ТТН на карточке «Отправки»: стадия и текст НП или «Создать ТТН»; устаревшая — тревога и «Пересоздать ТТН». */
 import { RotateCcw, Truck } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
-import { LabelPrint, Notice, ShipmentStageBadge, type LabelFormat, type ShipmentMode } from "@/features/delivery";
+import { LabelPrint, Notice, ShipmentStageBadge, UNCONFIRMED_PRINT, type LabelFormat, type ShipmentMode } from "@/features/delivery";
 import type { AdminDispatchOrder } from "@/features/order";
-import { isPrintable } from "../model/batch";
+import { isPrintable, isUnconfirmed } from "../model/batch";
 
 export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; format: LabelFormat; onTtn: (mode: ShipmentMode) => void }) {
   const stale = o.shipmentStaleReasons ?? [];
@@ -33,7 +33,7 @@ export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; forma
           Создать ТТН
         </Button>
       )}
-      {isPrintable(o) && <LabelPrint orderIds={[o.id]} format={format} />}
+      {isPrintable(o) && <LabelPrint orderIds={[o.id]} format={format} confirmFirst={isUnconfirmed(o) ? UNCONFIRMED_PRINT : undefined} />}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addBranch, defaultBranchRef, presetText, removeBranch } from "./sender";
+import { addBranch, defaultBranchRef, removeBranch } from "./sender";
 import type { SenderConfig } from "./types";
 
 const cfg: SenderConfig = {
@@ -30,13 +30,3 @@ describe("отделения отправителя", () => {
   });
 });
 
-describe("presetText", () => {
-  it("размеры в см, тара и цена", () => {
-    expect(presetText({ name: "Мала", lengthMm: 200, widthMm: 150, heightMm: 100, tareG: 120, packMinor: 1500 })).toMatch(
-      /^Мала: 20×15×10 \/ тара 120 г \/ 15/,
-    );
-  });
-  it("без тары и цены — только размеры", () => {
-    expect(presetText({ name: "Пакет", lengthMm: 300, widthMm: 200, heightMm: 15, tareG: 0, packMinor: 0 })).toBe("Пакет: 30×20×1.5");
-  });
-});

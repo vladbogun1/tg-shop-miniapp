@@ -41,19 +41,52 @@ const SENDER = {
   },
 };
 
+const box = (id: string, name: string, l: number, w: number, heights: number[], inStock: boolean, kind = "BOX") => ({
+  id,
+  code: null,
+  name,
+  kind,
+  lengthMm: l,
+  widthMm: w,
+  heightsMm: heights,
+  tareG: 100,
+  packMinor: 1500,
+  packEstimated: true,
+  inStock,
+  own: false,
+  sortOrder: 0,
+  options: heights.map((h, i) => ({ heightMm: h, label: i === 0 ? name : `${name} · ${h / 10} см`, full: i === 0 })),
+});
+const BOXES = [
+  box("b-1", "Мала", 200, 150, [100], true),
+  box("b-5", "Коробка 5 кг", 400, 240, [200, 130, 80], true),
+  box("b-10", "Коробка 10 кг", 400, 340, [285, 200, 140, 85], false),
+  box("b-bag", "Пакет фирменный 1 кг", 360, 250, [], true, "BAG"),
+];
+const PACKING = {
+  boxSuggested: "Коробка 5 кг · 13 см",
+  boxSuggestedSource: "по прошлым заказам ×3",
+  boxLabel: null,
+  boxId: null,
+  boxHeightMm: null,
+  boxConfirmedAt: null,
+  boxConfirmedBy: null,
+  printed: true,
+  unconfirmed: true,
+  statusCode: "1",
+  npWeightG: null,
+  npVolumeWeightG: null,
+  npFactualWeightG: null,
+  npCostMinor: null,
+  npMeasuredAt: null,
+};
+
 const SIZE = { weightG: 450, lengthMm: 200, widthMm: 150, heightMm: 60 };
 const EMPTY = { weightG: null, lengthMm: null, widthMm: null, heightMm: null };
 
 async function mockNp(page: Page) {
   await page.route("**/api/admin/np/sender", (r) => json(r, SENDER));
-  await page.route("**/api/admin/np/box-presets", (r) =>
-    json(r, {
-      presets: [
-        { name: "Мала", lengthMm: 200, widthMm: 150, heightMm: 100, tareG: 120, packMinor: 1500 },
-        { name: "Середня", lengthMm: 300, widthMm: 200, heightMm: 150, tareG: 250, packMinor: 2500 },
-      ],
-    })
-  );
+  await page.route("**/api/admin/np/boxes", (r) => json(r, { reviewed: true, boxes: BOXES }));
   await page.route("**/api/admin/np/webhook", (r) =>
     json(r, { configured: true, url: "https://example.test/api/np/webhook", subscriptions: [{ id: "sub-1", type: "status", url: "https://example.test/api/np/webhook", active: true }], error: null })
   );
@@ -71,7 +104,7 @@ async function mockNp(page: Page) {
 
 const STAGES = [
   { shipmentStage: null, shipmentOrigin: null, shipmentStaleReasons: [], trackingNumber: null },
-  { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: [], trackingNumber: "20450000000001", shipmentStatusText: "Створено" },
+  { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: [], trackingNumber: "20450000000001", shipmentStatusText: "Створено", shipmentPacking: PACKING },
   { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: ["Получатель или адрес доставки изменились"], trackingNumber: "20450000000002", shipmentStatusText: "Створено" },
 ];
 
@@ -103,7 +136,7 @@ for (const width of WIDTHS) {
     await page.goto("/settings/delivery?tab=ttn");
     const ttn = page.locator("#group-novaposhta-ttn");
     await expect(ttn.getByRole("heading", { name: "Отправитель Новой Почты" })).toBeVisible();
-    await expect(ttn.getByText("Мала: 20×15×10 / тара 120 г / 15 ₴")).toBeVisible();
+    await expect(ttn.getByText("Мала", { exact: true })).toBeVisible();
     await ttn.scrollIntoViewIfNeeded();
     await page.setViewportSize({ width, height: width < 768 ? 812 : 900 });
     await ttn.screenshot({ path: path.join(SHOTS, `np-settings-ttn-${width}.png`) });

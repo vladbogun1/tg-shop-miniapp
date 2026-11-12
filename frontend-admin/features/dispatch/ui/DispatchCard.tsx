@@ -8,6 +8,7 @@ import { money } from "@shop/core/money";
 import { ChevronDown, ChevronRight, Hash, MapPin, Phone, Store, Truck, User } from "lucide-react";
 import { useState } from "react";
 import { approvedUnpaid, awaitingPrepayment, dueExpired } from "../model/dispatch";
+import { isStale } from "../model/batch";
 import { CodCallout } from "./CodCallout";
 import { CopyField } from "./CopyField";
 import { OrderItems } from "./OrderItems";
@@ -15,7 +16,7 @@ import { AwaitingPaymentNote, UnpaidNote } from "./PaymentWarnings";
 import { ShipForm } from "./ShipForm";
 import { NpBadges, TickBox } from "./NpCardParts";
 import { ShipmentRow } from "./ShipmentRow";
-import type { LabelFormat, ShipmentMode } from "@/features/delivery";
+import { PackBox, type LabelFormat, type ShipmentMode } from "@/features/delivery";
 
 /** `#id · name · payment badge` — the first thing to match against the parcel. The whole left part opens the order. */
 function CardHeader({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void }) {
@@ -125,6 +126,14 @@ export interface CardNp {
   onTick: () => void;
   format: LabelFormat;
   onTtn: (mode: ShipmentMode) => void;
+  /** Коробка подтверждена: перечитать «Отправку». */
+  onPacked: () => void;
+}
+
+/** «Пакуй в» — у живой, не устаревшей ТТН. */
+function Packing({ o, onPacked }: { o: AdminDispatchOrder; onPacked: () => void }) {
+  if (!o.shipmentPacking || !o.shipmentStage || o.shipmentStage === "CANCELLED" || isStale(o)) return null;
+  return <PackBox orderId={o.id} packing={o.shipmentPacking} ttn={o.trackingNumber} onDone={onPacked} />;
 }
 
 export function DispatchCard({ o, np, onOpen, onZoom }: { o: AdminDispatchOrder; np: CardNp; onOpen: () => void; onZoom: (src: string) => void }) {
@@ -159,6 +168,7 @@ export function DispatchCard({ o, np, onOpen, onZoom }: { o: AdminDispatchOrder;
       <Recipient o={o} />
       <OrderItems items={o.items} onZoom={onZoom} />
       <PaymentDetails o={o} />
+      {isNp && <Packing o={o} onPacked={np.onPacked} />}
       {isNp && <ShipmentRow o={o} format={np.format} onTtn={np.onTtn} />}
       <ShipForm o={o} />
     </div>

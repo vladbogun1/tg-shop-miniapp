@@ -14,6 +14,8 @@ export interface BatchBarProps {
   selected: number;
   toCreate: number;
   toPrintIds: string[];
+  /** Из них с подтверждённой коробкой. */
+  toPrintConfirmedIds: string[];
   staleCount: number;
   format: LabelFormat;
   onFormat: (f: LabelFormat) => void;
@@ -42,6 +44,39 @@ function BranchChips({ branches, branch, onBranch }: Pick<BatchBarProps, "branch
   );
 }
 
+/**
+ * Печать этикеток. Есть неподтверждённые коробки — основная кнопка печатает только подтверждённые,
+ * «все» — после вопроса (НП перемеряет посылку с неверной коробкой).
+ */
+function PrintButtons(p: Pick<BatchBarProps, "toPrintIds" | "toPrintConfirmedIds" | "format" | "onFormat">) {
+  const unconfirmed = p.toPrintIds.length - p.toPrintConfirmedIds.length;
+  if (unconfirmed === 0) {
+    return <LabelPrint orderIds={p.toPrintIds} label={`Печать этикеток · ${p.toPrintIds.length}`} format={p.format} onFormat={p.onFormat} />;
+  }
+  return (
+    <>
+      <LabelPrint
+        orderIds={p.toPrintConfirmedIds}
+        label={`Печать подтверждённых · ${p.toPrintConfirmedIds.length}`}
+        format={p.format}
+        onFormat={p.onFormat}
+      />
+      <LabelPrint
+        orderIds={p.toPrintIds}
+        label={`Все · ${p.toPrintIds.length}`}
+        format={p.format}
+        variant="ghost"
+        confirmFirst={{
+          title: `Коробка не подтверждена: ${unconfirmed}`,
+          message: "У этих заказов в ТТН может быть не та коробка — Новая Почта перемеряет их в отделении. Лучше сначала нажать «Упаковано» на карточках.",
+          confirmLabel: "Печатать все",
+          cancelLabel: "Не печатать",
+        }}
+      />
+    </>
+  );
+}
+
 export function BatchBar(p: BatchBarProps) {
   const all = p.selected > 0 && p.selected === p.total;
   return (
@@ -67,11 +102,13 @@ export function BatchBar(p: BatchBarProps) {
         >
           Создать ТТН для всех · {p.toCreate}
         </Button>
-        <LabelPrint orderIds={p.toPrintIds} label={`Печать этикеток · ${p.toPrintIds.length}`} format={p.format} onFormat={p.onFormat} />
+        <PrintButtons {...p} />
       </div>
       <p className="text-[12px] leading-snug text-[var(--text-faint)]">
         ТТН создаётся только для заказов без неё; неоплаченные онлайн пропускаются с пояснением. Этикетки — одним PDF.
         {p.staleCount > 0 && ` Устаревших ТТН: ${p.staleCount} — их не печатаем, пересоздайте.`}
+        {p.toPrintIds.length > p.toPrintConfirmedIds.length &&
+          ` Коробка не подтверждена: ${p.toPrintIds.length - p.toPrintConfirmedIds.length} — нажмите «Упаковано» на карточке, и ТТН обновится.`}
       </p>
     </section>
   );

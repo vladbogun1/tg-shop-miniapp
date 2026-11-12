@@ -4,7 +4,9 @@
  */
 import type { AdminDispatchOrder } from "@/features/order";
 
-type BatchOrder = Pick<AdminDispatchOrder, "id" | "deliveryMethod" | "shipmentStage" | "shipmentOrigin" | "shipmentStaleReasons">;
+type BatchOrder = Pick<AdminDispatchOrder, "id" | "deliveryMethod" | "shipmentStage" | "shipmentOrigin" | "shipmentStaleReasons"> & {
+  shipmentPacking?: { unconfirmed: boolean } | null;
+};
 
 export function isNovaPoshta(o: Pick<AdminDispatchOrder, "deliveryMethod">): boolean {
   return o.deliveryMethod === "NOVA_POSHTA";
@@ -19,6 +21,11 @@ export function isPrintable(o: BatchOrder): boolean {
   return o.shipmentOrigin === "API" && !!o.shipmentStage && o.shipmentStage !== "CANCELLED" && !isStale(o);
 }
 
+/** ТТН ждёт «Упаковано»: коробка не подтверждена, НП посылку ещё не приняла. */
+export function isUnconfirmed(o: BatchOrder): boolean {
+  return !!o.shipmentPacking?.unconfirmed;
+}
+
 export interface BatchScope<T extends BatchOrder> {
   /** Заказы НП на экране (после фильтра и поиска). */
   np: T[];
@@ -28,6 +35,8 @@ export interface BatchScope<T extends BatchOrder> {
   toCreate: T[];
   /** С этикеткой — для печати. */
   toPrint: T[];
+  /** Из них с подтверждённой коробкой — печать «только подтверждённых». */
+  toPrintConfirmed: T[];
   /** С устаревшей ТТН — их не печатаем, а пересоздаём. */
   staleCount: number;
 }
@@ -36,11 +45,13 @@ export function batchScope<T extends BatchOrder>(visible: T[], ticked: ReadonlyS
   const np = visible.filter(isNovaPoshta);
   const selected = np.filter((o) => ticked.has(o.id));
   const scope = selected.length > 0 ? selected : np;
+  const toPrint = scope.filter(isPrintable);
   return {
     np,
     selected,
     toCreate: scope.filter((o) => !o.shipmentStage),
-    toPrint: scope.filter(isPrintable),
+    toPrint,
+    toPrintConfirmed: toPrint.filter((o) => !isUnconfirmed(o)),
     staleCount: scope.filter(isStale).length,
   };
 }

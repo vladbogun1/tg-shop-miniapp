@@ -53,6 +53,8 @@ export function useNpBatch(visible: AdminDispatchOrder[]) {
     ttnFor,
     openTtn: (id: string, mode: ShipmentMode) => setTtnFor({ id, mode }),
     closeTtn: () => setTtnFor(null),
+    /** «Упаковано»: ТТН могла смениться — перечитать «Отправку». */
+    packed: refresh,
     ttnDone: () => {
       setTtnFor(null);
       refresh();

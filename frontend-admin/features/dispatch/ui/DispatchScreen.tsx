@@ -24,7 +24,9 @@ import { useBroadcastDispatch, useDispatchOrders } from "../queries";
 import { DispatchCard } from "./DispatchCard";
 import { BatchBar, BatchResults } from "./BatchBar";
 import { useNpBatch, type NpBatch } from "./use-np-batch";
-import { ShipmentDialog } from "@/features/delivery";
+import { BoxesPanel, ShipmentDialog } from "@/features/delivery";
+import { Badge } from "@/components/ui/Badge";
+import { isUnconfirmed } from "../model/batch";
 import { DispatchToolbar } from "./DispatchToolbar";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -69,6 +71,7 @@ function Section({
                   onTick: () => np.toggle(o.id),
                   format: np.format,
                   onTtn: (mode) => np.openTtn(o.id, mode),
+                  onPacked: np.packed,
                 }}
                 onOpen={() => onOpen(o.id)}
                 onZoom={onZoom}
@@ -91,6 +94,7 @@ function NpBatchPanel({ np, onOpen }: { np: NpBatch; onOpen: (id: string) => voi
         selected={np.scope.selected.length}
         toCreate={np.scope.toCreate.length}
         toPrintIds={np.scope.toPrint.map((o) => o.id)}
+        toPrintConfirmedIds={np.scope.toPrintConfirmed.map((o) => o.id)}
         staleCount={np.scope.staleCount}
         format={np.format}
         onFormat={np.setFormat}
@@ -104,6 +108,12 @@ function NpBatchPanel({ np, onOpen }: { np: NpBatch; onOpen: (id: string) => voi
       {np.results && <BatchResults results={np.results} onClose={np.clearResults} onOpen={onOpen} />}
     </div>
   );
+}
+
+/** Сколько ТТН ждут «Упаковано» — рядом со ссылками «Коробки» / «Журнал упаковки». */
+function UnconfirmedCount({ orders }: { orders: AdminDispatchOrder[] }) {
+  const n = orders.filter(isUnconfirmed).length;
+  return n > 0 ? <Badge tone="warn">Коробка не подтверждена · {n}</Badge> : null;
 }
 
 export function DispatchScreen() {
@@ -139,6 +149,10 @@ export function DispatchScreen() {
         onRefresh={() => q.refetch()}
         onBroadcast={() => broadcast.mutate()}
       />
+
+      <div className="mb-4">
+        <BoxesPanel extra={<UnconfirmedCount orders={all} />} />
+      </div>
 
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка заказов…">
         {all.length === 0 ? (
