@@ -23,7 +23,7 @@ export function SectionTabs() {
   return (
     <nav
       aria-label={`Раздел «${group.label}»`}
-      className="thin-scroll -mt-1 mb-4 flex min-w-0 max-w-full gap-1 overflow-x-auto border-b border-[var(--line)] lg:-mt-2 lg:mb-5"
+      className="thin-scroll -mt-1 flex min-w-0 max-w-full gap-1 overflow-x-auto overflow-y-hidden border-b border-[var(--line)] lg:-mt-2 lg:mb-5"
     >
       {tabs.map((t) => {
         const active = isTabActive(pathname, t);

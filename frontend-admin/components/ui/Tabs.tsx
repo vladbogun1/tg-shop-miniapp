@@ -34,7 +34,7 @@ export function Tabs<T extends string>({
   }
 
   return (
-    <div role="tablist" className={cn("thin-scroll flex gap-1 overflow-x-auto border-b border-[var(--line)]", className)}>
+    <div role="tablist" className={cn("thin-scroll flex gap-1 overflow-x-auto overflow-y-hidden border-b border-[var(--line)]", className)}>
       {items.map((t, i) => {
         const active = t.value === value;
         return (

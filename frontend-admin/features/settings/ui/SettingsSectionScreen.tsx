@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { QueryState } from "@/components/ui/QueryState";
 import { CenterSpinner } from "@/components/ui/Spinner";
+import { cn } from "@/lib/cn";
 import { useIsSuperAdmin } from "@/features/staff";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { isKnownSection, OTHER_SECTION, PAYMENT_PARAMS_TAB, SECTIONS, visibleSections, type SettingsSection } from "../model/sections";
@@ -44,6 +45,12 @@ function useSection(id: string) {
   return { q, sections, section, gone };
 }
 
+/** С какой ширины слева меню разделов (уже — ссылка «‹ Настройки»). Классы целиком — их ищет Tailwind. */
+const LAYOUT = { grid: "lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-8", aside: "lg:sticky lg:top-[88px] lg:block", back: "lg:hidden" };
+const WIDE_LAYOUT = { grid: "2xl:grid 2xl:grid-cols-[220px_minmax(0,1fr)] 2xl:items-start 2xl:gap-8", aside: "2xl:sticky 2xl:top-[88px] 2xl:block", back: "2xl:hidden" };
+
+const layoutOf = (id: string) => (SECTIONS.find((s) => s.id === id)?.wide ? WIDE_LAYOUT : LAYOUT);
+
 function SectionScreen({ id }: { id: string }) {
   const router = useRouter();
   const { q, sections, section, gone } = useSection(id);
@@ -62,17 +69,18 @@ function SectionScreen({ id }: { id: string }) {
   const saveBarHere = id !== "payment" || target.tab === PAYMENT_PARAMS_TAB;
 
   const meta = section ?? SECTIONS.find((s) => s.id === id);
+  const layout = layoutOf(id);
   const needsSettings = id === OTHER_SECTION || (meta?.groups.length ?? 0) > 0;
   // Порядок карточек — как в описании раздела (`SECTIONS`), а не как отдал сервер.
   const groups = section ? section.groups.flatMap((id) => (q.data?.groups ?? []).filter((g) => g.id === id)) : [];
 
   return (
-    <div className="min-w-0 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <aside className="hidden min-w-0 lg:sticky lg:top-[88px] lg:block">
+    <div className={cn("min-w-0", layout.grid)}>
+      <aside className={cn("hidden min-w-0", layout.aside)}>
         <SectionNav sections={sections} current={id} />
       </aside>
       <div className="min-w-0">
-        <Link href="/settings" className="focusable mb-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--accent)] pointer-coarse:min-h-11 lg:hidden">
+        <Link href="/settings" className={cn("focusable mb-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--accent)] pointer-coarse:min-h-11", layout.back)}>
           <ChevronLeft className="h-4 w-4" />
           Настройки
         </Link>

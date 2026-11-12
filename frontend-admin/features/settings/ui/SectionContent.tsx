@@ -31,7 +31,6 @@ export function SectionContent(props: SectionContentProps) {
   if (section.id === "delivery") {
     return (
       <DeliverySection
-        group={props.groups.find((g) => g.id === NP_GROUP)}
         items={props.items.filter((it) => it.group === NP_GROUP)}
         form={props.form}
         tab={props.tab ?? ""}

@@ -169,7 +169,8 @@ export const DEFAULT_OPEN: Record<string, boolean> = {
   clients: true,
   stats: true,
 };
-export const OPEN_KEY = "admin.nav.sections";
+// «.v2»: состав блоков сменился (вариант B), старая запомненная свёрнутость к ним не относится — все начинают с открытых.
+export const OPEN_KEY = "admin.nav.sections.v2";
 
 const TITLE: Record<string, string> = {
   "/inbox": "Внимание",

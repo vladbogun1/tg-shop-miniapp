@@ -35,6 +35,8 @@ export interface SettingsSection {
   panels: readonly SectionPanel[];
   /** Только главному админу (SUPER_ADMIN). */
   superOnly?: boolean;
+  /** Широкая таблица: меню разделов слева — только от 1536 px, уже — ссылка «← Настройки», чтобы таблица не прокручивалась вбок. */
+  wide?: boolean;
   block: SectionBlock;
 }
 
@@ -149,6 +151,7 @@ export const SECTIONS: readonly SettingsSection[] = [
     description: "Кто входит в админку, роли и 2FA. Только для главного админа.",
     groups: [],
     panels: ["admins"],
+    wide: true,
     superOnly: true,
     block: "team",
   },
