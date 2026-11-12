@@ -519,6 +519,7 @@
     "shipmentStage" : null,
     "shipmentOrigin" : null,
     "shipmentStatusText" : null,
-    "shipmentStaleReasons" : [ ]
+    "shipmentStaleReasons" : [ ],
+    "shipmentPacking" : null
   }
 }
