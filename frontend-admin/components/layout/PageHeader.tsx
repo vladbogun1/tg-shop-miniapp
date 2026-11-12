@@ -28,7 +28,8 @@ export function PageHeader({
   return (
     <div className="flex min-w-0 flex-col max-lg:mb-4 max-lg:gap-3">
       <div className={cn("flex flex-wrap items-end justify-between gap-3 max-lg:contents lg:mb-5", className)}>
-        <div className="max-lg:order-1">
+        {/* Без подзаголовка на телефоне здесь только sr-only заголовок — вне потока, чтобы не давать лишний gap. */}
+        <div className={cn("max-lg:order-1", !subtitle && "max-lg:absolute")}>
           {/* On a phone the shell's top bar already shows the title — no second one (kept for screen readers). */}
           <h1 className="page-title max-lg:sr-only text-[26px] leading-tight">{title}</h1>
           {subtitle && <p className="text-[13px] leading-snug text-[var(--text-muted)] lg:mt-1 lg:text-[14px]">{subtitle}</p>}
