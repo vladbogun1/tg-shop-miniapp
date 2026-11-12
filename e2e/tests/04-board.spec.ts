@@ -81,6 +81,19 @@ test("Esc закрывает только верхний слой: сначал�
   await expect(page.getByRole("heading", { name: "Заказы", level: 1 })).toBeVisible();
 });
 
+test("закрытая модалка возвращает фокус кнопке, которая её открыла", async ({ page }) => {
+  const drawer = await openOrderFromBoard(page, ORDER.shipped, CUSTOMER.shipped);
+  const reject = drawer.getByRole("button", { name: "Отклонить", exact: true });
+  await reject.focus();
+  await reject.press("Enter");
+  const modal = dialog(page, "Причина (обязательно)");
+  await expect(modal).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(modal).toHaveCount(0);
+  // The focus trap is cleaned up per dialog element (packages/ui use-dialog-focus): the opener gets the focus back.
+  await expect(reject).toBeFocused();
+});
+
 test("Esc на заполненной форме: сначала «Закрыть без сохранения?», ввод не теряется", async ({ page, api }) => {
   const drawer = await openOrderFromBoard(page, ORDER.shipped, CUSTOMER.shipped);
   await drawer.getByRole("button", { name: "Отклонить", exact: true }).click();
