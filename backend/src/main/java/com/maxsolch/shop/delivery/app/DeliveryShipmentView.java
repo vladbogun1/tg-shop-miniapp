@@ -79,7 +79,7 @@ public class DeliveryShipmentView implements OrderShipmentView {
         // A few approved orders wait for packing at a time: the suggestion of each, as «Створити ТТН» would make it.
         for (ShippingOrder o : orders.findAll(open)) {
             if (o.status() == OrderStatus.APPROVED && o.deliveryMethod() == DeliveryMethod.NOVA_POSHTA
-                    && !o.archived() && ShipmentManualSync.typed(o) == null) {
+                    && !o.archived() && ShipmentManualSync.typed(o) == null && !o.onlinePaymentMissing()) {
                 out.put(UuidUtil.toString(o.id()), ShipmentFacts.toPack(suggestions.forOrder(o)));
             }
         }
