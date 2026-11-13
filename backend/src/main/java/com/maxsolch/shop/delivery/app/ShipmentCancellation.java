@@ -1,6 +1,7 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.DeliveryError;
+import com.maxsolch.shop.delivery.domain.NovaPoshtaException;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
@@ -49,12 +50,28 @@ public class ShipmentCancellation {
             if (writer.dryRun() || DryRunLabels.isDry(s.getTtn())) {
                 log.info("NP waybill {} is only forgotten here, not deleted at NP (dry run)", s.getTtn());
             } else {
-                writer.delete(s.getNpRef(), s.getTtn(), "Отменить ТТН");
+                deleteAtNp(s);
             }
         }
         store.deactivate(s.getId());
         store.clearTracking(orderId, s.getTtn());
         log.info("NP waybill {} cancelled", s.getTtn());
+    }
+
+    /**
+     * NP's own «no» about a waybill it no longer finds (NOT_FOUND: deleted in the NP cabinet) is not a reason to keep
+     * it on the order — it is forgotten here. NP down or no answer is: the waybill may still be alive at NP.
+     */
+    private void deleteAtNp(OrderShipment s) {
+        try {
+            writer.delete(s.getNpRef(), s.getTtn(), "Отменить ТТН");
+        } catch (NovaPoshtaException e) {
+            if (s.stageEnum() != ShipmentStage.NOT_FOUND || e.isUnavailable()) {
+                throw e;
+            }
+            log.warn("NP waybill {} is not found at NP and NP refused to delete it ({}): only forgotten here",
+                    s.getTtn(), e.reason());
+        }
     }
 
     /**

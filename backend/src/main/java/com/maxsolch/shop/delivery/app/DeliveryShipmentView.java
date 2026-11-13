@@ -77,10 +77,12 @@ public class DeliveryShipmentView implements OrderShipmentView {
             return out;
         }
         // A few approved orders wait for packing at a time: the suggestion of each, as «Створити ТТН» would make it.
+        // The online part still due: shown with the reason (`waiting`) — «Упаковано» would not make the waybill.
         for (ShippingOrder o : orders.findAll(open)) {
             if (o.status() == OrderStatus.APPROVED && o.deliveryMethod() == DeliveryMethod.NOVA_POSHTA
-                    && !o.archived() && ShipmentManualSync.typed(o) == null && !o.onlinePaymentMissing()) {
-                out.put(UuidUtil.toString(o.id()), ShipmentFacts.toPack(suggestions.forOrder(o)));
+                    && !o.archived() && ShipmentManualSync.typed(o) == null) {
+                String waiting = o.onlinePaymentMissing() ? PackingCommands.unpaidReason(o.amountDueMinor()) : null;
+                out.put(UuidUtil.toString(o.id()), ShipmentFacts.toPack(suggestions.forOrder(o), waiting));
             }
         }
         return out;

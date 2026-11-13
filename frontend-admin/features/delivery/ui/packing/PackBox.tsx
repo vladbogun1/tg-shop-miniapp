@@ -5,6 +5,8 @@
  * выбор другой коробки или своих размеров, вес с весов и «Упаковано» → ТТН меняется под эту коробку.
  * Напечатанную ТТН Новая Почта не меняет — сервер создаёт новую с другим номером, поэтому сначала спрашиваем.
  * После подтверждения — строка «✓ Коробка … · кто, когда» с «Изменить».
+ * До нажатия сервер проверяет ТТН с этой коробкой (PackCheck): что не пройдёт — видно сразу, кнопка ждёт исправления.
+ * Выбор и вес живут в черновике вкладки (use-pack-draft) — отказ НП или обновление страницы их не сбрасывают.
  */
 import { useMemo, useState } from "react";
 import { Check, PackageCheck, Pencil } from "lucide-react";
@@ -18,7 +20,9 @@ import { choiceByLabel, choiceLabel, confirmBody, isBagBox, npHasParcel, type Pa
 import type { NpBox, Packing } from "../../model/types";
 import { useBoxesQuery, useConfirmBox } from "../../queries-packing";
 import { BoxGlyph } from "../boxes/BoxGlyph";
+import { NpRefusalHint, PackProblems, usePackProblems } from "./PackCheck";
 import { PackPicker } from "./PackPicker";
+import { usePackDraft } from "./use-pack-draft";
 
 const PRINTED_WARNING =
   "Этикетка уже напечатана — НП не меняет напечатанную ТТН, будет создана новая с другим номером. Старую этикетку выбросить.";
@@ -80,12 +84,16 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
     const own = all.filter((b) => b.inStock);
     return own.length > 0 ? own : all;
   }, [all]);
-  const [picked, setPicked] = useState<PackChoice | null>(null);
-  const [weight, setWeight] = useState("");
+  const { picked, setPicked, weight, setWeight, clear } = usePackDraft(orderId);
   const choice = picked ?? initialChoice(all, p);
   const confirm = useConfirm();
-  const save = useConfirmBox(orderId, ttn, onDone);
+  const save = useConfirmBox(orderId, ttn, () => {
+    clear();
+    onDone();
+  });
   const body = choice ? confirmBody(choice, weight) : null;
+  const check = usePackProblems(orderId, body);
+  const blocked = check.problems.length > 0;
   const suggested = !picked && !p.boxId;
 
   async function submit() {
@@ -126,7 +134,10 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
             inputMode="numeric"
             placeholder="по товарам"
             value={weight}
-            onChange={(e) => setWeight(e.target.value.replace(/[^\d]/g, ""))}
+            onChange={(e) => {
+              save.reset();
+              setWeight(e.target.value.replace(/[^\d]/g, ""));
+            }}
             hint={weight ? weightText(Number(weight)) : undefined}
           />
         </div>
@@ -134,18 +145,22 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
           variant="accent"
           className="flex-1 basis-40 pointer-coarse:min-h-11 sm:flex-none"
           loading={save.isPending}
-          disabled={!body}
+          disabled={!body || blocked || check.pending}
           icon={<PackageCheck className="h-4 w-4" />}
           onClick={submit}
         >
           {ttn ? "Упаковано" : "Упаковано — создать ТТН"}
         </Button>
       </div>
+      <PackProblems problems={check.problems} warnings={check.warnings} />
       {save.isError && (
         // Ошибка остаётся под кнопкой, пока не выбрана другая коробка — видно, что не так, без поиска тостов.
-        <p role="alert" className="break-words text-[12.5px] font-semibold text-[var(--danger-ink)]">
-          {errorMessage(save.error, undefined, "Не удалось подтвердить коробку")}
-        </p>
+        <>
+          <p role="alert" className="break-words text-[12.5px] font-semibold text-[var(--danger-ink)]">
+            {errorMessage(save.error, undefined, "Не удалось подтвердить коробку")}
+          </p>
+          <NpRefusalHint />
+        </>
       )}
     </div>
   );
@@ -173,6 +188,14 @@ export function PackBox({
   const [editing, setEditing] = useState(false);
   const confirmed = !!packing.boxConfirmedAt && !!packing.boxLabel;
   if (readOnly && !confirmed) return null;
+  if (packing.waiting && !confirmed) {
+    // Неоплаченная доплата: паковать рано — ТТН с наложкой на долг не создаём. Причина с сервера, не молчим.
+    return (
+      <p className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[13px] leading-snug text-[var(--warn)]">
+        {packing.waiting}
+      </p>
+    );
+  }
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3" aria-label="Коробка посылки">
       {confirmed && (readOnly || !editing) ? (

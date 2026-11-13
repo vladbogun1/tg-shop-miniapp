@@ -1,5 +1,6 @@
 package com.maxsolch.shop.delivery.api;
 
+import com.maxsolch.shop.delivery.app.PackingCommands.Check;
 import com.maxsolch.shop.delivery.app.PackingCommands.ConfirmBox;
 import com.maxsolch.shop.delivery.app.PackingCommands.Confirmed;
 import com.maxsolch.shop.delivery.app.PackingConfirmation;
@@ -37,6 +38,12 @@ public class AdminPackingController {
             + "(a printed one is remade — ttnNumberChanged); without a waybill it is made now — ttnCreated")
     public Confirmed confirmBox(@PathVariable String orderId, @RequestBody ConfirmBox body) {
         return confirmation.confirm(orderId, body);
+    }
+
+    @PostMapping("/shipments/{orderId}/box/check")
+    @Operation(summary = "«Упаковано» before it is pressed: what would stop the waybill for this box (no NP call)")
+    public Check checkBox(@PathVariable String orderId, @RequestBody ConfirmBox body) {
+        return confirmation.check(orderId, body);
     }
 
     @GetMapping("/packing/journal")

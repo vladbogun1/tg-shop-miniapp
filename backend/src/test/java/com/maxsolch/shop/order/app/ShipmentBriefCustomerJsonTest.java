@@ -55,7 +55,7 @@ class ShipmentBriefCustomerJsonTest {
         Instant t = Instant.parse("2026-11-12T10:00:00Z");
         OrderShipmentView.Packing packing = new OrderShipmentView.Packing("Коробка 5 кг · 13 см",
                 "подобрано по размерам", "Коробка 5 кг · 8 см", "box-id", 80, t, "Пакувальник", true, false,
-                "4", 5000, 5000, 1900, 19550L, t);
+                "4", 5000, 5000, 1900, 19550L, t, null);
         OrderShipmentView.ShipmentBrief b = full();
         OrderShipmentView.ShipmentBrief admin = new OrderShipmentView.ShipmentBrief(b.ttn(), b.origin(),
                 b.serviceType(), b.stage(), b.statusCode(), b.statusText(), b.scheduledDelivery(), b.arrivedAt(),

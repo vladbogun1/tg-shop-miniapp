@@ -138,6 +138,7 @@ public interface OrderShipmentView {
             @Nullable Integer npVolumeWeightG,
             @Nullable Integer npFactualWeightG,
             @Nullable Long npCostMinor,
-            @Nullable Instant npMeasuredAt) {
+            @Nullable Instant npMeasuredAt,
+            @Nullable String waiting) {
     }
 }

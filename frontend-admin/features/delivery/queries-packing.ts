@@ -6,7 +6,7 @@
  */
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { npBoxApi, packingApi } from "./api";
 import { deliveryKeys } from "./keys";
 import { confirmMessage } from "./model/packing";
@@ -72,6 +72,18 @@ export function useConfirmBox(orderId: string, before: string | null | undefined
     success: (r) => confirmMessage(r, before),
     errorFallback: "Не удалось подтвердить коробку",
     onSuccess: onDone,
+  });
+}
+
+/** Что помешает «Упаковано» с этой коробкой (те же проверки, что у ТТН, без запроса в НП). */
+export function usePackCheck(orderId: string, bodyJson: string | null) {
+  return useQuery({
+    queryKey: deliveryKeys.packCheck(orderId, bodyJson ?? ""),
+    queryFn: () => packingApi.check(orderId, JSON.parse(bodyJson ?? "{}") as ConfirmBoxBody),
+    enabled: !!bodyJson,
+    staleTime: QUERY_PRESETS.live.staleTime,
+    placeholderData: keepPreviousData,
+    retry: false,
   });
 }
 

@@ -5636,6 +5636,27 @@
         },
         "type" : "object"
       },
+      "Check" : {
+        "properties" : {
+          "problems" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "problems",
+          "warnings"
+        ],
+        "type" : "object"
+      },
       "CheckoutConfig" : {
         "properties" : {
           "courierEnabled" : {
@@ -12951,6 +12972,10 @@
           },
           "unconfirmed" : {
             "type" : "boolean"
+          },
+          "waiting" : {
+            "nullable" : true,
+            "type" : "string"
           }
         },
         "required" : [
@@ -12968,7 +12993,8 @@
           "npWeightG",
           "printed",
           "statusCode",
-          "unconfirmed"
+          "unconfirmed",
+          "waiting"
         ],
         "type" : "object"
       },
@@ -24942,6 +24968,52 @@
           }
         ],
         "summary" : "«Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); without a waybill it is made now — ttnCreated",
+        "tags" : [
+          "Admin NP packing"
+        ]
+      }
+    },
+    "/api/admin/np/shipments/{orderId}/box/check" : {
+      "post" : {
+        "operationId" : "AdminPackingController_checkBox",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "orderId",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmBox"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Check"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Упаковано» before it is pressed: what would stop the waybill for this box (no NP call)",
         "tags" : [
           "Admin NP packing"
         ]

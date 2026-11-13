@@ -41,7 +41,7 @@ export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; forma
       ) : (
         <>
           <span className="min-w-0 flex-1 basis-48 text-[12.5px] text-[var(--text-muted)]">
-            {o.shipmentPacking ? "ТТН появится после «Упаковано»" : "ТТН ещё нет"}
+            {o.shipmentPacking ? (o.shipmentPacking.waiting ? "ТТН появится после оплаты и «Упаковано»" : "ТТН появится после «Упаковано»") : "ТТН ещё нет"}
           </span>
           {isSuper && (
             <Button size="sm" variant="ghost" icon={<Truck className="h-4 w-4" />} onClick={() => onTtn("create")}>

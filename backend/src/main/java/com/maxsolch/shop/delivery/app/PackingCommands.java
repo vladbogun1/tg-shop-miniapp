@@ -1,6 +1,9 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.order.app.OrderShipmentView.ShipmentBrief;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+
+import java.util.List;
 
 /** What the packer's «Подтвердить коробку» takes and gives back. */
 public final class PackingCommands {
@@ -41,5 +44,17 @@ public final class PackingCommands {
      * @param ttnNumberChanged the label was printed, so NP made a new waybill: print the new label
      */
     public record Confirmed(ShipmentBrief shipment, boolean ttnUpdated, boolean ttnCreated, boolean ttnNumberChanged) {
+    }
+
+    /**
+     * «Упаковано» checked before it is pressed: {@code problems} stop the waybill (the button waits), {@code warnings}
+     * only tell.
+     */
+    public record Check(List<String> problems, List<String> warnings) {
+    }
+
+    /** Why an approved order is not packed yet: the online part has not arrived. */
+    public static String unpaidReason(long amountDueMinor) {
+        return "Ждём оплату " + MoneyFormat.uah(amountDueMinor) + " — ТТН создастся при «Упаковано», когда оплата придёт";
     }
 }

@@ -2382,6 +2382,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/np/shipments/{orderId}/box/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Упаковано» before it is pressed: what would stop the waybill for this box (no NP call) */
+        post: operations["AdminPackingController_checkBox"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/np/size/categories": {
         parameters: {
             query?: never;
@@ -7815,6 +7832,10 @@ export interface components {
             /** Format: int32 */
             quantity?: number;
         };
+        Check: {
+            problems: string[];
+            warnings: string[];
+        };
         CheckoutConfig: {
             courierEnabled: boolean;
             estimateEnabled: boolean;
@@ -9990,6 +10011,7 @@ export interface components {
             printed: boolean;
             statusCode: string | null;
             unconfirmed: boolean;
+            waiting: string | null;
         };
         Page: {
             items: components["schemas"]["JournalActivityFeedRow"][];
@@ -15362,6 +15384,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Confirmed"];
+                };
+            };
+        };
+    };
+    AdminPackingController_checkBox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmBox"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Check"];
                 };
             };
         };

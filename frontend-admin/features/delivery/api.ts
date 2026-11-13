@@ -22,6 +22,7 @@ import type {
   NpBoxList,
   NpBranch,
   NpStreet,
+  PackCheck,
   PackingJournal,
   ParcelSize,
   ProductSize,
@@ -80,6 +81,7 @@ export const npBoxApi = {
 /** Упаковка: «Упаковано» (коробка посылки) и «Журнал упаковки». */
 export const packingApi = {
   confirm: (orderId: string, body: ConfirmBoxBody) => apiPost<ConfirmBoxResult>(`/api/admin/np/shipments/${q(orderId)}/box`, body),
+  check: (orderId: string, body: ConfirmBoxBody) => apiPost<PackCheck>(`/api/admin/np/shipments/${q(orderId)}/box/check`, body),
   journal: (days: number) => apiGet<PackingJournal>(`/api/admin/np/packing/journal?days=${days}`),
 };
 

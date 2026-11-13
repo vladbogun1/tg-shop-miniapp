@@ -71,9 +71,10 @@ class PackingConfirmationTest {
     private final PackingMemoryStore memory = mock(PackingMemoryStore.class);
     private final AdminAuditService audit = mock(AdminAuditService.class);
     private final PostomatCells postomats = mock(PostomatCells.class);
+    private final ShipmentPreparation preparation = mock(ShipmentPreparation.class);
     private final PackingConfirmation confirmation = new PackingConfirmation(locks, shipments, orders, editing,
             creation, store, catalog, parcels, memory, mock(CurrentActor.class), mock(AdminDirectory.class), audit, postomats,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            preparation, Clock.fixed(NOW, ZoneOffset.UTC));
 
     private final List<OrderShipment> rows = new ArrayList<>();
     private final NpBox np5 = box();
@@ -352,6 +353,40 @@ class PackingConfirmationTest {
         assertThat(done.ttnNumberChanged()).isFalse();
         assertThat(row.getBoxLabel()).startsWith("Коробка 5 кг");
         verify(memory).remember(any(), any());
+    }
+
+    private static Prepared prepared(List<String> problems, boolean unpaid, long dueMinor) {
+        return new Prepared(null, "abc", "APPROVED", null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, 0, 0, false, null, null, null, null, problems, List.of("предупреждение"), unpaid,
+                dueMinor, null, null, null, null);
+    }
+
+    @Test
+    void theCheckBeforePackingRunsTheWaybillChecksOnThisBox() {
+        // «Упаковано» says what blocks it before it is pressed (a refusal used to surface only from NP).
+        when(orders.find(ORDER)).thenReturn(Optional.of(NpFixtures.order(OrderStatus.APPROVED, false, null)));
+        when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
+        when(preparation.prepare(eq(ORDER), any())).thenReturn(prepared(List.of("Нужны фамилия и имя"), true, 30000));
+
+        PackingCommands.Check c = confirmation.check(ORDER_ID, catalogBox(np5, 80));
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(preparation).prepare(eq(ORDER), o.capture());
+        assertThat(o.getValue().heightMm()).isEqualTo(80);
+        assertThat(o.getValue().lengthMm()).isEqualTo(400);
+        assertThat(c.problems()).hasSize(2).first().isEqualTo("Нужны фамилия и имя");
+        assertThat(c.problems().get(1)).startsWith("Ждём оплату 300");
+        assertThat(c.warnings()).containsExactly("предупреждение");
+        verifyNoInteractions(creation);
+        verify(editing, never()).updateHeld(any(), any());
+    }
+
+    @Test
+    void aParcelNpAlreadyHasIsNotChecked() {
+        row.setStage(ShipmentStage.IN_TRANSIT.name());
+
+        assertThat(confirmation.check(ORDER_ID, catalogBox(np5, 80)).problems()).isEmpty();
+        verifyNoInteractions(preparation);
     }
 
     @Test

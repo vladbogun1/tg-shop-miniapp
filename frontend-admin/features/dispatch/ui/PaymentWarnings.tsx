@@ -47,7 +47,7 @@ export function UnpaidNote({ o, expired }: { o: AdminDispatchOrder; expired: boo
       </div>
       {more && (
         <p className="mt-1.5 pl-6 text-[12px] leading-snug text-[var(--text-muted)]">
-          Заказ одобрен без оплаты. Отправить можно — с подтверждением (например, если договорились в чате).
+          Заказ одобрен без оплаты. ТТН создастся при «Упаковано», когда оплата придёт (или отметьте оплату вручную в заказе).
         </p>
       )}
     </div>

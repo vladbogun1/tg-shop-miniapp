@@ -82,6 +82,7 @@ export type NpBoxEdit = Schemas["BoxEdit"];
 export type Packing = Schemas["Packing"];
 export type ConfirmBoxBody = Schemas["ConfirmBox"];
 export type ConfirmBoxResult = Schemas["Confirmed"];
+export type PackCheck = Schemas["Check"];
 /** Строка «Журнала упаковки»; до подтверждения и до перемера поля коробки и НП — null. */
 export type PackingJournalRow = { [K in keyof Schemas["DeliveryPackingJournalRow"]]: Schemas["DeliveryPackingJournalRow"][K] | null };
 export type PackingJournal = { days: number; rows: PackingJournalRow[] };

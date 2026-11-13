@@ -6,7 +6,8 @@
  *    вручную» (окно с живым предпросмотром) для NEW / APPROVED.
  *  - ТТН есть: номер (копировать), стадия, текст НП, ссылка на отслеживание, когда опрашивали (или почему
  *    не вышло), «Оновити статус», «Печать этикетки», а пока НП не сканировала посылку и ТТН наша —
- *    «Изменить ТТН» / «Отменить ТТН».
+ *    «Изменить ТТН» / «Отменить ТТН»; введённую вручную — «Забыть введённую ТТН» (в НП ничего не удаляется,
+ *    заказ снова ждёт «Упаковано»).
  * ТТН не отправляет заказ: он остаётся «Одобрен», пока НП не примет посылку (тогда опрос переводит в «Отправлен»).
  * «ТТН устарела» — см. use-stale.ts: плашка, разовое окно и «Пересоздать ТТН».
  *
@@ -93,6 +94,7 @@ function ShipmentActions({
   order,
   s,
   editable,
+  open,
   st,
   onEdit,
   onRemake,
@@ -101,6 +103,8 @@ function ShipmentActions({
   order: ShipmentOrder;
   s: Shipment;
   editable: boolean;
+  /** Заказ ещё не отправлен (NEW / APPROVED). */
+  open: boolean;
   st: StaleState;
   onEdit: () => void;
   /** Удалить в НП и создать заново (напечатанную — с новым номером). */
@@ -110,11 +114,21 @@ function ShipmentActions({
   const confirm = useConfirm();
   const cancel = useCancelShipment(order.id, onChanged);
   const printable = s.origin === "API" && s.stage !== "CANCELLED";
+  const forgettable = s.origin === "MANUAL" && open;
   async function askCancel() {
     const ok = await confirm({
       title: "Отменить ТТН?",
       message: `ТТН ${s.ttn} будет удалена в Новой Почте. Заказ останется, и можно создать новую ТТН.`,
       confirmLabel: "Отменить ТТН",
+      danger: true,
+    });
+    if (ok) cancel.mutate(s.ttn);
+  }
+  async function askForget() {
+    const ok = await confirm({
+      title: "Забыть введённую ТТН?",
+      message: `ТТН ${s.ttn} уйдёт из заказа (в Новой Почте ничего не удаляется). Потом — «Упаковано» создаст новую.`,
+      confirmLabel: "Забыть ТТН",
       danger: true,
     });
     if (ok) cancel.mutate(s.ttn);
@@ -142,6 +156,11 @@ function ShipmentActions({
       {editable && (
         <Button size="sm" variant="danger" loading={cancel.isPending} icon={<Trash2 className="h-4 w-4" />} onClick={askCancel}>
           Отменить ТТН
+        </Button>
+      )}
+      {forgettable && (
+        <Button size="sm" variant="surface" loading={cancel.isPending} icon={<Trash2 className="h-4 w-4" />} onClick={askForget}>
+          Забыть введённую ТТН
         </Button>
       )}
     </div>
@@ -179,7 +198,7 @@ function ShipmentView({
       <ShipmentFacts s={s} currency={order.currency ?? "UAH"} />
       <ShipmentPacking orderId={order.id} s={s} open={open} onChanged={onChanged} />
       <PollLine s={s} />
-      <ShipmentActions order={order} s={s} editable={editable} st={st} onEdit={() => onModal("edit")} onRemake={() => onModal("remake")} onChanged={onChanged} />
+      <ShipmentActions order={order} s={s} editable={editable} open={open} st={st} onEdit={() => onModal("edit")} onRemake={() => onModal("remake")} onChanged={onChanged} />
       <StaleDialog
         open={st.stale && seen !== st.key && !modalOpen}
         ttn={s.ttn}
@@ -193,6 +212,11 @@ function ShipmentView({
       />
     </div>
   );
+}
+
+function toPackHint(p: Packing | null | undefined): string {
+  if (!p) return "ТТН ещё нет.";
+  return p.waiting ? "ТТН ещё нет." : "ТТН ещё нет: она создастся после «Упаковано» — под выбранную коробку.";
 }
 
 export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onChanged: () => void }) {
@@ -220,7 +244,7 @@ export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onCh
         <div className="flex flex-col items-stretch gap-2.5">
           <p className="text-[13px] leading-snug text-[var(--text-muted)]">
             {service ? `${service} · ` : ""}
-            {order.toPack ? "ТТН ещё нет: она создастся после «Упаковано» — под выбранную коробку." : "ТТН ещё нет."}
+            {toPackHint(order.toPack)}
           </p>
           {order.toPack && <PackBox orderId={order.id} packing={order.toPack} ttn={null} onDone={onChanged} postomat={order.npServiceType === "POSTOMAT"} />}
           {canCreate && isSuper && (

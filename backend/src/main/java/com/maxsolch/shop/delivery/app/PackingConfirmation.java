@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -61,12 +62,13 @@ public class PackingConfirmation {
     private final AdminDirectory admins;
     private final AdminAuditService audit;
     private final PostomatCells postomats;
+    private final ShipmentPreparation preparation;
     private final Clock clock;
 
     PackingConfirmation(ShipmentLocks locks, OrderShipmentRepository shipments, ShipmentOrders orders,
                         ShipmentEditing editing, ShipmentCreation creation, ShipmentStore store, NpBoxCatalog catalog, ParcelSizeService parcels,
                         PackingMemoryStore memory, CurrentActor actor, AdminDirectory admins,
-                        AdminAuditService audit, PostomatCells postomats, Clock clock) {
+                        AdminAuditService audit, PostomatCells postomats, ShipmentPreparation preparation, Clock clock) {
         this.locks = locks;
         this.shipments = shipments;
         this.orders = orders;
@@ -80,6 +82,7 @@ public class PackingConfirmation {
         this.admins = admins;
         this.audit = audit;
         this.postomats = postomats;
+        this.preparation = preparation;
         this.clock = clock;
     }
 
@@ -88,13 +91,59 @@ public class PackingConfirmation {
                           boolean saveAsBox, boolean bag) {
     }
 
+    /** The parcel this box makes of the order's goods: sides (a bag folded into the locker's cell) and weight. */
+    private record Measured(int lengthMm, int widthMm, int heightMm, int weightG, int[] folded) {
+    }
+
+    private Measured measure(ShippingOrder order, String service, Choice c, Integer weightG) {
+        List<Unit> units = parcels.units(order);
+        int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
+        int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
+        int[] cell = c.bag() ? postomats.cell(service, order) : null;
+        int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
+        return new Measured(folded == null ? c.lengthMm() : folded[0], folded == null ? c.widthMm() : folded[1],
+                height, weight, folded);
+    }
+
+    private static void checkWeight(Integer weight) {
+        if (weight != null && (weight <= 0 || weight > MAX_WEIGHT_G)) {
+            throw NpErrors.bad("Вес посылки — от 1 г до 1000 кг");
+        }
+    }
+
+    private static String serviceOf(OrderShipment s, ShippingOrder order) {
+        return s != null ? s.getServiceType() : order.serviceType() == null ? null : order.serviceType().name();
+    }
+
+    /**
+     * «Упаковано» before it is pressed: what would stop the waybill made (or changed) for this box — the same
+     * checks «Створити ТТН» runs, with the bag folded the same way. No NP call, no lock.
+     */
+    public PackingCommands.Check check(String orderId, ConfirmBox req) {
+        byte[] id = UuidUtil.toBytes(orderId);
+        Choice c = choice(req);
+        checkWeight(req.weightG());
+        ShippingOrder order = orders.find(id).orElseThrow(NpErrors::orderNotFound);
+        OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(id).orElse(null);
+        Measured m = measure(order, serviceOf(s, order), c, req.weightG());
+        if (s != null && !(OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s))) {
+            return new PackingCommands.Check(List.of(), List.of());  // only recorded, nothing goes to NP
+        }
+        Options o = s == null ? firstWaybill(m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm())
+                : options(s, m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm());
+        Prepared p = preparation.prepare(id, o);
+        List<String> problems = new ArrayList<>(p.problems());
+        if (s == null && p.unpaid()) {
+            problems.add(PackingCommands.unpaidReason(p.amountDueMinor()));
+        }
+        return new PackingCommands.Check(problems, p.warnings());
+    }
+
     public Confirmed confirm(String orderId, ConfirmBox req) {
         byte[] id = UuidUtil.toBytes(orderId);
         Choice c = choice(req);
         Integer weight = req.weightG();
-        if (weight != null && (weight <= 0 || weight > MAX_WEIGHT_G)) {
-            throw NpErrors.bad("Вес посылки — от 1 г до 1000 кг");
-        }
+        checkWeight(weight);
         Confirmed done = locks.withOrder(id, () -> confirmLocked(id, c, weight));
         audit.record("NP_BOX_CONFIRM", "ORDER", orderId, "Коробка «" + done.shipment().packing().boxLabel() + "»"
                 + (done.ttnCreated() ? ", ТТН создана " + done.shipment().ttn() : "")
@@ -106,14 +155,12 @@ public class PackingConfirmation {
         ShippingOrder order = orders.find(orderId).orElseThrow(NpErrors::orderNotFound);
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId).orElse(null);
         String confirmedBefore = s != null && s.getBoxConfirmedAt() != null ? s.getBoxLabel() : null;
-        String service = s != null ? s.getServiceType() : order.serviceType() == null ? null : order.serviceType().name();
-        List<Unit> units = parcels.units(order);
-        int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
-        int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
-        int[] cell = c.bag() ? postomats.cell(service, order) : null;
-        int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
-        int length = folded == null ? c.lengthMm() : folded[0];
-        int width = folded == null ? c.widthMm() : folded[1];
+        Measured m = measure(order, serviceOf(s, order), c, weightG);
+        int height = m.heightMm();
+        int weight = m.weightG();
+        int[] folded = m.folded();
+        int length = m.lengthMm();
+        int width = m.widthMm();
         OrderShipment target = s;
         boolean updated = false;
         if (s == null && (order.status() != OrderStatus.APPROVED || order.archived())) {

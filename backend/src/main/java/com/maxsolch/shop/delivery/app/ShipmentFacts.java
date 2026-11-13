@@ -76,9 +76,9 @@ public final class ShipmentFacts {
     }
 
     /** An order to pack before its waybill: only the suggestion, nothing confirmed or printed. */
-    static OrderShipmentView.Packing toPack(BoxSuggestion.Suggested s) {
+    static OrderShipmentView.Packing toPack(BoxSuggestion.Suggested s, String waiting) {
         return new OrderShipmentView.Packing(s.label(), s.source(), null, null, null, null, null, false, true, null,
-                null, null, null, null, null);
+                null, null, null, null, null, waiting);
     }
 
     static OrderShipmentView.Packing packing(OrderShipment s, BoxSuggestion.Hint hint) {
@@ -89,6 +89,6 @@ public final class ShipmentFacts {
                 s.getBoxId() == null ? null : UuidUtil.toString(s.getBoxId()), s.getBoxHeightMm(),
                 s.getBoxConfirmedAt(), s.getBoxConfirmedBy(), s.getPrintedAt() != null, open, s.getStatusCode(),
                 s.getNpWeightG(), s.getNpVolumeWeightG(), s.getNpFactualWeightG(), s.getNpCostMinor(),
-                s.getNpMeasuredAt());
+                s.getNpMeasuredAt(), null);
     }
 }
