@@ -262,7 +262,7 @@ class PickupMoneyTest {
     void recheckAsksOnlyAboutPickupsWhoseOrderStillWaits() {
         ShipmentTrackingService tracking = new ShipmentTrackingService(shipments, orders,
                 mock(com.maxsolch.shop.delivery.domain.NovaPoshtaGateway.class), settings, applier,
-                mock(ShipmentNotifier.class), mock(NpAlerts.class), null, null, Clock.fixed(NOW, ZoneOffset.UTC));
+                mock(LinkedParcels.class), mock(ShipmentNotifier.class), mock(NpAlerts.class), null, null, Clock.fixed(NOW, ZoneOffset.UTC));
         OrderShipment other = new OrderShipment();
         byte[] otherOrder = com.maxsolch.shop.platform.util.UuidUtil.randomBytes();
         other.setOrderId(otherOrder);

@@ -29,6 +29,9 @@ export type ShipmentOrigin = "API" | "MANUAL";
 /** Активная посылка заказа. origin: API — создана нашим ключом (правится, удаляется, печатается); MANUAL — номер введён руками. */
 export type Shipment = Schemas["ShipmentBrief"];
 
+/** ТТН, которую НП создала на основании нашей: kind RETURN (к нам) | REDIRECT (переадресация) | LIGHT_RETURN (возврат после получения). */
+export type LinkedParcel = Schemas["LinkedParcelView"];
+
 /** Что админ может поменять перед «Створити ТТН»; не задано — взять из заказа. */
 /** null — «взять из заказа», как и отсутствующее поле (JSON тот же, что в ветке np-integration). */
 export type ShipmentOptions = { [K in keyof Schemas["Options"]]?: Schemas["Options"][K] | null };

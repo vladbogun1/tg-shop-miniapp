@@ -25,6 +25,8 @@ import java.util.List;
  * @param onlinePaymentMissing the online part of an online order has not arrived
  *                          ({@link OrderMoney#onlinePaymentMissing} — the same rule blocks «Отправлен»)
  * @param goodsKey          fingerprint of the composition (product:variant:units, sorted) — changes with the goods
+ * @param returnStatus      the refused parcel is on its way back ({@code IN_TRANSIT}) / was accepted ({@code RECEIVED});
+ *                          null = no return
  */
 public record ShippingOrder(
         byte[] id,
@@ -57,7 +59,8 @@ public record ShippingOrder(
         @Nullable Instant approvedAt,
         @Nullable Long tgUserId,
         List<Line> lines,
-        String goodsKey) {
+        String goodsKey,
+        @Nullable String returnStatus) {
 
     /**
      * One line of the order.
@@ -88,7 +91,7 @@ public record ShippingOrder(
                 o.getPhone(), o.isPaymentOnDelivery(), o.getTotalMinor(), OrderMoney.codMinor(o), o.isPaid(),
                 OrderMoney.amountDueMinor(o), OrderMoney.onlinePaymentMissing(o),
                 o.getArchivedAt() != null, o.isCancelRequestPending(), o.getTrackingNumber(), o.getApprovedAt(), o.getTgUserId(), lines,
-                goodsKey(lines));
+                goodsKey(lines), o.getReturnStatus());
     }
 
     private static Line line(OrderItem i) {

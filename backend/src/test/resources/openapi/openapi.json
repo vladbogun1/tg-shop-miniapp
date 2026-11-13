@@ -9840,6 +9840,64 @@
         ],
         "type" : "object"
       },
+      "LinkedParcelView" : {
+        "properties" : {
+          "arrivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "lastPolledAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "receivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "stage" : {
+            "type" : "string"
+          },
+          "statusText" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "storagePaidFrom" : {
+            "format" : "date",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "type" : "string"
+          },
+          "ttn" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "arrivedAt",
+          "createdAt",
+          "kind",
+          "lastPolledAt",
+          "receivedAt",
+          "stage",
+          "statusText",
+          "storagePaidFrom",
+          "trackingUrl",
+          "ttn"
+        ],
+        "type" : "object"
+      },
       "LoginLogEntry" : {
         "properties" : {
           "at" : {
@@ -26560,6 +26618,45 @@
         "summary" : "Set the order's paid flag",
         "tags" : [
           "Admin Orders"
+        ]
+      }
+    },
+    "/api/admin/orders/{id}/parcel-links" : {
+      "get" : {
+        "operationId" : "AdminParcelLinkController_links",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/LinkedParcelView"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Linked Nova Poshta waybills of the order (return, redirect), oldest first",
+        "tags" : [
+          "Admin shipments"
         ]
       }
     },

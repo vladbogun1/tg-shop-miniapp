@@ -10,6 +10,7 @@
  *    заказ снова ждёт «Упаковано»).
  * ТТН не отправляет заказ: он остаётся «Одобрен», пока НП не примет посылку (тогда опрос переводит в «Отправлен»).
  * «ТТН устарела» — см. use-stale.ts: плашка, разовое окно и «Пересоздать ТТН».
+ * Под посылкой — связанные ТТН (возврат, переадресация), см. ParcelChain.
  *
  * Фича delivery не знает тип заказа: блок берёт узкую форму и сообщает об изменениях через `onChanged`
  * (как OnlinePaymentBlock).
@@ -35,6 +36,7 @@ import { ShipmentStageBadge } from "./parts";
 import { StaleBanner, StaleDialog } from "./StaleShipment";
 import { useStaleShipment, type StaleState } from "./use-stale";
 import { ShipmentDialog } from "./ShipmentDialog";
+import { ParcelChain } from "./ParcelChain";
 
 /** Что блоку нужно от заказа. */
 export interface ShipmentOrder {
@@ -198,6 +200,7 @@ function ShipmentView({
       <ShipmentFacts s={s} currency={order.currency ?? "UAH"} />
       <ShipmentPacking orderId={order.id} s={s} open={open} onChanged={onChanged} />
       <PollLine s={s} />
+      <ParcelChain orderId={order.id} polledAt={s.lastPolledAt ?? ""} />
       <ShipmentActions order={order} s={s} editable={editable} open={open} st={st} onEdit={() => onModal("edit")} onRemake={() => onModal("remake")} onChanged={onChanged} />
       <StaleDialog
         open={st.stale && seen !== st.key && !modalOpen}

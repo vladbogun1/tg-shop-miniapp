@@ -16,11 +16,14 @@ public class ShipmentJobs {
     private final ShipmentTrackingService tracking;
     private final NpWebhookService webhooks;
     private final ShipmentCleanupSweep cleanup;
+    private final LinkedParcelPolling linked;
 
-    ShipmentJobs(ShipmentTrackingService tracking, NpWebhookService webhooks, ShipmentCleanupSweep cleanup) {
+    ShipmentJobs(ShipmentTrackingService tracking, NpWebhookService webhooks, ShipmentCleanupSweep cleanup,
+                 LinkedParcelPolling linked) {
         this.tracking = tracking;
         this.webhooks = webhooks;
         this.cleanup = cleanup;
+        this.linked = linked;
     }
 
     @SchedulerLock(name = "ShipmentJobs.track", lockAtMostFor = "PT25M", lockAtLeastFor = "PT1M")
@@ -34,6 +37,14 @@ public class ShipmentJobs {
             webhooks.purgeOld();
         } catch (RuntimeException e) {
             log.warn("NP tracking job failed: {}", e.getMessage());
+        }
+        try {
+            int n = linked.pollDue();
+            if (n > 0) {
+                log.info("NP tracking: polled {} linked waybills (returns, redirects)", n);
+            }
+        } catch (RuntimeException e) {
+            log.warn("NP linked waybills poll failed: {}", e.getMessage());
         }
         try {
             int n = cleanup.run();

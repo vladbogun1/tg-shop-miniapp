@@ -8,6 +8,7 @@ import com.maxsolch.shop.delivery.domain.NovaPoshtaGateway;
 import com.maxsolch.shop.delivery.domain.NpJson;
 import com.maxsolch.shop.delivery.domain.NpMeasure;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.ParcelLink;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.ShipmentOrders;
@@ -53,12 +54,19 @@ public class ShipmentTrackingService {
      * почте» the next look closes the order with what NP collected.
      */
     static final Duration RECHECK_RECEIVED = Duration.ofDays(7);
+    /**
+     * A picked-up parcel is looked at once a day for this long: a «легке повернення» after pickup shows only as
+     * {@code LightReturnNumber} of our received waybill (13.11.2026).
+     */
+    static final Duration WATCH_RECEIVED = Duration.ofDays(30);
+    static final Duration WATCH_INTERVAL = Duration.ofHours(24);
 
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;
     private final NovaPoshtaGateway api;
     private final SettingsService settings;
     private final ShipmentStatusApplier applier;
+    private final LinkedParcels linked;
     private final ShipmentNotifier notifier;
     private final NpAlerts alerts;
     private final TransactionTemplate tx;
@@ -66,13 +74,15 @@ public class ShipmentTrackingService {
     private final Clock clock;
 
     ShipmentTrackingService(OrderShipmentRepository shipments, ShipmentOrders orders, NovaPoshtaGateway api,
-                            SettingsService settings, ShipmentStatusApplier applier, ShipmentNotifier notifier,
-                            NpAlerts alerts, TransactionTemplate tx, ShopZone zone, Clock clock) {
+                            SettingsService settings, ShipmentStatusApplier applier, LinkedParcels linked,
+                            ShipmentNotifier notifier, NpAlerts alerts, TransactionTemplate tx, ShopZone zone,
+                            Clock clock) {
         this.shipments = shipments;
         this.orders = orders;
         this.api = api;
         this.settings = settings;
         this.applier = applier;
+        this.linked = linked;
         this.notifier = notifier;
         this.alerts = alerts;
         this.tx = tx;
@@ -90,6 +100,7 @@ public class ShipmentTrackingService {
                 List.of(ShipmentStage.RECEIVED.name(), ShipmentStage.CANCELLED.name()),
                 now.minus(MIN_INTERVAL), now.minus(maxAge()), PageRequest.of(0, 1000)));
         due.addAll(recheckReceived(now));
+        due.addAll(watchReceived(now, due));
         int failed = 0;
         String lastError = "";
         for (int i = 0; i < due.size(); i += BATCH) {
@@ -126,6 +137,15 @@ public class ShipmentTrackingService {
                 .map(o -> UuidUtil.toString(o.id()))
                 .collect(Collectors.toSet());
         return rows.stream().filter(s -> waiting.contains(UuidUtil.toString(s.getOrderId()))).toList();
+    }
+
+    /** Picked up within {@link #WATCH_RECEIVED}, not looked at for a day, not in {@code due} yet. */
+    List<OrderShipment> watchReceived(Instant now, List<OrderShipment> due) {
+        Set<String> taken = due.stream().map(s -> UuidUtil.toString(s.getId())).collect(Collectors.toSet());
+        return shipments.findReceivedSince(ShipmentStage.RECEIVED.name(), now.minus(WATCH_RECEIVED),
+                        now.minus(WATCH_INTERVAL), PageRequest.of(0, 1000)).stream()
+                .filter(s -> !taken.contains(UuidUtil.toString(s.getId())))
+                .toList();
     }
 
     /** How long a waybill is polled at all (setting, 60 days by default). */
@@ -180,6 +200,11 @@ public class ShipmentTrackingService {
             } catch (RuntimeException e) {
                 log.warn("NP status of waybill {} not applied: {}", s.getTtn(), e.getMessage());
             }
+            try {
+                linked.discover(s, n);
+            } catch (RuntimeException e) {
+                log.warn("NP linked waybills of {} not saved: {}", s.getTtn(), e.getMessage());
+            }
         }
         return null;
     }
@@ -214,7 +239,9 @@ public class ShipmentTrackingService {
 
     /** Reads one getStatusDocuments row. */
     static StatusUpdate parse(JsonNode n) {
-        String returnTtn = NpJson.trimmed(n, "LastCreatedOnTheBasisNumber");
+        // A redirect's number is not a return (it is followed as a linked waybill, see LinkedParcels).
+        String returnTtn = ParcelLink.Kind.ofBasisType(NpJson.trimmed(n, "LastCreatedOnTheBasisDocumentType"))
+                == ParcelLink.Kind.REDIRECT ? null : NpJson.trimmed(n, "LastCreatedOnTheBasisNumber");
         LocalDate storage = date(NpJson.text(n, "DateFirstDayStorage"));
         if (storage == null) {
             storage = date(NpJson.text(n, "DatePayedKeeping"));

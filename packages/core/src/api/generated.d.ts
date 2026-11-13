@@ -2914,6 +2914,23 @@ export interface paths {
         patch: operations["AdminOrderController_setPaid"];
         trace?: never;
     };
+    "/api/admin/orders/{id}/parcel-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Linked Nova Poshta waybills of the order (return, redirect), oldest first */
+        get: operations["AdminParcelLinkController_links"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/orders/{id}/payments": {
         parameters: {
             query?: never;
@@ -9082,6 +9099,23 @@ export interface components {
         LineDto: {
             eta: components["schemas"]["EtaDto"];
             variantId: string;
+        };
+        LinkedParcelView: {
+            /** Format: date-time */
+            arrivedAt: string | null;
+            /** Format: date-time */
+            createdAt: string | null;
+            kind: string;
+            /** Format: date-time */
+            lastPolledAt: string | null;
+            /** Format: date-time */
+            receivedAt: string | null;
+            stage: string;
+            statusText: string | null;
+            /** Format: date */
+            storagePaidFrom: string | null;
+            trackingUrl: string;
+            ttn: string;
         };
         LoginLogEntry: {
             /** Format: date-time */
@@ -16262,6 +16296,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    AdminParcelLinkController_links: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LinkedParcelView"][];
                 };
             };
         };
