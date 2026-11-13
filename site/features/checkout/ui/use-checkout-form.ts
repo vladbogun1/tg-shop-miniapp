@@ -50,7 +50,7 @@ export function useCheckoutForm(onPlaced: (orderId: string) => void) {
   const orderable = lines.filter((l) => l.stock > 0);
   const estimate = useDeliveryEstimate(api.checkout, estimateRequestOf(d.draft, orderable, total, pay.payOnDelivery), npConfig.estimateEnabled);
 
-  const recipientOk = isRecipientOk(d.recipient);
+  const recipientOk = isRecipientOk(d.recipient, d.draft.tab === "PICKUP");
   const phoneOk = isValidPhone(phone);
   const deliveryOk = isDeliveryOk(d.draft);
   const paymentOk = !!pay.chosen;

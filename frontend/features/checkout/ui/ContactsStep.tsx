@@ -16,6 +16,7 @@ export function ContactsStep({
   onPhone,
   prefilled,
   serverField,
+  latinAllowed,
 }: {
   recipient: Recipient;
   onRecipient: (r: Recipient) => void;
@@ -27,9 +28,11 @@ export function ContactsStep({
   prefilled: boolean;
   /** The server rejected this field (validation) although the client check passed. */
   serverField?: OrderField | null;
+  /** Pickup: no waybill, Latin letters are fine. */
+  latinAllowed?: boolean;
 }) {
   const t = useCheckoutT();
-  const err = recipientErrors(recipient);
+  const err = recipientErrors(recipient, latinAllowed);
   const serverName = serverField === "name";
   const phoneBad = (touched && !phoneOk) || serverField === "phone";
   const set = (patch: Partial<Recipient>) => onRecipient({ ...recipient, ...patch });

@@ -90,7 +90,7 @@ class CheckoutDeliveryTest {
 
     @Test
     void splitName_becomesTheOneLineSurnameFirst() {
-        CheckoutDelivery.Recipient r = delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Петренко", "Іван")));
+        CheckoutDelivery.Recipient r = delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Петренко", "Іван")), DeliveryMethod.NOVA_POSHTA);
 
         assertThat(r.customerName()).isEqualTo("Петренко Іван");
         assertThat(r.parts().lastName()).isEqualTo("Петренко");
@@ -99,7 +99,7 @@ class CheckoutDeliveryTest {
 
     @Test
     void oldClient_oneNameField_noParts() {
-        CheckoutDelivery.Recipient r = delivery.recipient(cmd(" Іван Петренко ", "city-1", "wh-1", null));
+        CheckoutDelivery.Recipient r = delivery.recipient(cmd(" Іван Петренко ", "city-1", "wh-1", null), DeliveryMethod.NOVA_POSHTA);
 
         assertThat(r.customerName()).isEqualTo("Іван Петренко");
         assertThat(r.parts()).isNull();
@@ -107,8 +107,20 @@ class CheckoutDeliveryTest {
 
     @Test
     void surnameWithoutName_isRefused() {
-        assertCode(() -> delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Петренко", " "))),
+        assertCode(() -> delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Петренко", " ")),
+                DeliveryMethod.NOVA_POSHTA),
                 OrderError.RECIPIENT_REQUIRED);
+    }
+
+    @Test
+    void latinName_isRefusedForNovaPoshta_butNotForPickup() {
+        // #e6e83c17: NP refuses Latin letters; a look-alike inside a Cyrillic word is fixed instead.
+        assertThat(delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Курзiн", "Данил")),
+                DeliveryMethod.NOVA_POSHTA).parts().lastName()).isEqualTo("Курзін");
+        assertCode(() -> delivery.recipient(cmd(null, "city-1", "wh-1", np(null, null, null, "Kurzin", "Danylo")),
+                DeliveryMethod.NOVA_POSHTA), OrderError.RECIPIENT_NOT_CYRILLIC);
+        assertThat(delivery.recipient(cmd(null, null, null, np(null, null, null, "Smith", "John")),
+                DeliveryMethod.PICKUP).customerName()).isEqualTo("Smith John");
     }
 
     // ---------- address ----------

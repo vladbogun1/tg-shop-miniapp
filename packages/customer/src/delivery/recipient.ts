@@ -64,8 +64,13 @@ export interface RecipientErrors {
   latin: { lastName: boolean; firstName: boolean; middleName: boolean };
 }
 
-export function recipientErrors(r: Recipient): RecipientErrors {
-  const latin = { lastName: namePartLatin(r.lastName), firstName: namePartLatin(r.firstName), middleName: namePartLatin(r.middleName) };
+const NO_LATIN = { lastName: false, firstName: false, middleName: false };
+
+/** `latinAllowed` — самовывоз: ТТН нет, имя может быть любыми буквами. */
+export function recipientErrors(r: Recipient, latinAllowed = false): RecipientErrors {
+  const latin = latinAllowed
+    ? NO_LATIN
+    : { lastName: namePartLatin(r.lastName), firstName: namePartLatin(r.firstName), middleName: namePartLatin(r.middleName) };
   return {
     lastName: !namePartOk(r.lastName) || latin.lastName,
     firstName: !namePartOk(r.firstName) || latin.firstName,
@@ -79,8 +84,8 @@ export function namePartShown(e: RecipientErrors, part: "lastName" | "firstName"
   return (touched && e[part]) || e.latin[part] || serverRejected;
 }
 
-export function recipientOk(r: Recipient): boolean {
-  const e = recipientErrors(r);
+export function recipientOk(r: Recipient, latinAllowed = false): boolean {
+  const e = recipientErrors(r, latinAllowed);
   return !e.lastName && !e.firstName && !e.middleName;
 }
 

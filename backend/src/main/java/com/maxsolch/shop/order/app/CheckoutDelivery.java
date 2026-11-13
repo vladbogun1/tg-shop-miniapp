@@ -47,8 +47,11 @@ class CheckoutDelivery {
     }
 
 
-    /** Checkout v2 sends the surname and the name apart; the one-line name is "Прізвище Ім'я" then. */
-    Recipient recipient(CreateOrderCommand cmd) {
+    /**
+     * Checkout v2 sends the surname and the name apart; the one-line name is "Прізвище Ім'я" then. Latin letters
+     * are refused only for Nova Poshta (its waybill takes Cyrillic only); a pickup buyer may write any letters.
+     */
+    Recipient recipient(CreateOrderCommand cmd, DeliveryMethod method) {
         CreateOrderCommand.NpDetails np = cmd.np();
         String last = np == null ? null : trimToNull(np.lastName());
         String first = np == null ? null : trimToNull(np.firstName());
@@ -63,7 +66,7 @@ class CheckoutDelivery {
             return new Recipient(oneLine, null);
         }
         RecipientName parts = new RecipientName(cut(last, 128), cut(first, 128), cut(trimToNull(np.middleName()), 128));
-        if (parts.latin()) {
+        if (method == DeliveryMethod.NOVA_POSHTA && parts.latin()) {
             // NP refuses Latin letters in the recipient's name: the waybill would never be made.
             throw new DomainException.BadRequest(OrderError.RECIPIENT_NOT_CYRILLIC);
         }

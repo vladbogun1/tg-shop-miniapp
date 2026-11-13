@@ -61,6 +61,7 @@ describe("получатель и курьер", () => {
     expect(e.lastName && e.latin.lastName).toBe(true);
     expect(e.middleName).toBe(true);
     expect(recipientOk({ ...recipient, middleName: "Petrovych" })).toBe(false);
+    expect(recipientOk({ lastName: "Smith", firstName: "John", middleName: "" }, true)).toBe(true);
   });
 
   it("customerName — «Прізвище Ім'я», строка сводки — все три части", () => {

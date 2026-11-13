@@ -76,7 +76,7 @@ export function CheckoutScreen() {
   });
 
   const stepOk = stepIsValid(step, {
-    recipientOk: recipientOk(form.d.recipient),
+    recipientOk: recipientOk(form.d.recipient, form.d.draft.tab === "PICKUP"),
     phoneOk: isValidPhone(form.phone),
     deliveryOk: deliveryOk(form.d.draft),
     paid: !!order.chosenPayment,

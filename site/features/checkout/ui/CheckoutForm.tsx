@@ -46,6 +46,7 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
               f.setPhone(v);
             }}
             serverField={fieldError}
+            latinAllowed={d.draft.tab === "PICKUP"}
             phoneOk={f.phoneOk}
             touched={touched}
             prefilled={f.prefilled}

@@ -37,10 +37,11 @@ final class OrderAddressChanges {
         }
         String before = full(now);
         RecipientName next = new RecipientName(last, first, isBlank(middle) ? null : middle);
-        if (next.latin()) {
-            throw new DomainException.BadRequest(OrderError.RECIPIENT_NOT_CYRILLIC);
-        }
         if (!before.equals(full(next))) {
+            // A new name for a Nova Poshta parcel must be Cyrillic; an old Latin one does not block other edits.
+            if (order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA && next.latin()) {
+                throw new DomainException.BadRequest(OrderError.RECIPIENT_NOT_CYRILLIC);
+            }
             changes.add("получатель: " + (before.isEmpty() ? "—" : before) + " → " + full(next));
             order.nameRecipient(next);
         }

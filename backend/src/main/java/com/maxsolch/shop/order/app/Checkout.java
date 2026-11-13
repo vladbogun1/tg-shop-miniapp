@@ -203,7 +203,7 @@ public class Checkout {
     /** The new order with its buyer, delivery target and payment option snapshot - no lines yet. */
     private Order newOrder(CreateOrderCommand cmd, DeliveryMethod deliveryMethod) {
         Order order = new Order();
-        CheckoutDelivery.Recipient recipient = delivery.recipient(cmd);
+        CheckoutDelivery.Recipient recipient = delivery.recipient(cmd, deliveryMethod);
         order.placeBy(new OrderBuyer(cmd.userId(), cmd.tgUserId(), cmd.tgUsername(),
                 recipient.customerName(), required(cmd.phone(), "phone"), cmd.comment()),
                 cmd.source());

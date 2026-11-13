@@ -80,6 +80,7 @@ export function CheckoutSteps({
             }}
             prefilled={form.prefilled}
             serverField={serverField}
+            latinAllowed={d.draft.tab === "PICKUP"}
           />
         )}
         {step === 1 && (
