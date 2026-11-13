@@ -40,7 +40,7 @@ describe("коробки", () => {
   });
   it("подпись выбора", () => {
     expect(choiceLabel(boxes, { kind: "box", boxId: "b5", heightMm: 80 })).toBe("Коробка 5 кг · 8 см");
-    expect(choiceLabel(boxes, { kind: "custom", name: "", l: "40", w: "24", h: "9,5", save: false })).toBe("Своя коробка 40×24×9,5 см");
+    expect(choiceLabel(boxes, { kind: "custom", name: "", l: "40", w: "24", h: "9,5", save: false, bag: false })).toBe("Своя коробка 40×24×9,5 см");
   });
 });
 
@@ -55,6 +55,11 @@ describe("«Упаковано»", () => {
       weightG: undefined,
     });
     expect(confirmBody({ kind: "custom", name: "", l: "45", w: "", h: "5", save: false }, "")).toBeNull();
+    expect(confirmBody({ kind: "custom", name: "", l: "55", w: "50", h: "", save: true, bag: true }, "")).toEqual({
+      custom: { name: undefined, lengthMm: 550, widthMm: 500, saveAsBox: true, bag: true },
+      weightG: undefined,
+    });
+    expect(choiceLabel(boxes, { kind: "custom", name: "", l: "55", w: "50", h: "", save: false, bag: true })).toBe("Свой пакет 55×50 см");
   });
   it("тост: заменена, обновлена, только записали", () => {
     const sh = { ttn: "2045" };

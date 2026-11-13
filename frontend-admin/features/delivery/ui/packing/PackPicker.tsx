@@ -2,7 +2,8 @@
 
 /**
  * Выбор коробки упаковщиком: чипы коробок «в наличии» со значками (переносятся, без горизонтальной прокрутки),
- * под выбранной — её высоты по линиям сгиба; «Своя…» — Д×Ш×В, название и «сохранить в мои коробки».
+ * под выбранной — её высоты по линиям сгиба; «Своя коробка…» — Д×Ш×В, «Свой пакет…» — Д×Ш (толщина по товару),
+ * название и «сохранить в мои коробки».
  * В поштомат: коробки и высоты, которые не влезают в ячейку 60×40×30, выключены с подписью; пакет сервер сложит.
  */
 import { Input } from "@/components/ui/Input";
@@ -14,6 +15,7 @@ import { BoxGlyph } from "../boxes/BoxGlyph";
 
 type Custom = Extract<PackChoice, { kind: "custom" }>;
 const EMPTY_CUSTOM: Custom = { kind: "custom", name: "", l: "", w: "", h: "", save: false };
+const EMPTY_BAG: Custom = { ...EMPTY_CUSTOM, bag: true };
 
 function Heights({ box, choice, postomat, onChoice }: { box: NpBox; choice: PackChoice; postomat: boolean; onChoice: (c: PackChoice) => void }) {
   if (isBagBox(box) || box.options.length <= 1) return null;
@@ -40,15 +42,16 @@ function Heights({ box, choice, postomat, onChoice }: { box: NpBox; choice: Pack
 function CustomFields({ c, postomat, onChoice }: { c: Custom; postomat: boolean; onChoice: (c: PackChoice) => void }) {
   const set = (patch: Partial<Custom>) => onChoice({ ...c, ...patch });
   const [l, w, h] = [toMm(c.l), toMm(c.w), toMm(c.h)];
-  const tooBig = postomat && !!l && !!w && !!h && !fitsPostomat(l, w, h);
+  // Пакет сервер сложит до ячейки поштомата сам; коробка — нет.
+  const tooBig = postomat && !c.bag && !!l && !!w && !!h && !fitsPostomat(l, w, h);
   return (
     <div className="card-2 flex min-w-0 flex-col gap-2.5 p-3">
       <div className="min-w-0">
-        <div className="field-label mb-1.5">Своя коробка, см (Д × Ш × В)</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="field-label mb-1.5">{c.bag ? "Свой пакет, см (Д × Ш) — толщина по товару" : "Своя коробка, см (Д × Ш × В)"}</div>
+        <div className={c.bag ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2"}>
           <Input aria-label="Длина, см" inputMode="decimal" placeholder="Д" value={c.l} onChange={(e) => set({ l: e.target.value })} />
           <Input aria-label="Ширина, см" inputMode="decimal" placeholder="Ш" value={c.w} onChange={(e) => set({ w: e.target.value })} />
-          <Input aria-label="Высота, см" inputMode="decimal" placeholder="В" value={c.h} onChange={(e) => set({ h: e.target.value })} />
+          {!c.bag && <Input aria-label="Высота, см" inputMode="decimal" placeholder="В" value={c.h} onChange={(e) => set({ h: e.target.value })} />}
         </div>
       </div>
       {tooBig && <p className="text-[12.5px] font-semibold text-[var(--danger)]">Больше 60×40×30 см — в поштомат не влезет</p>}
@@ -92,8 +95,11 @@ export function PackPicker({
             </Chip>
           );
         })}
-        <Chip active={choice?.kind === "custom"} onClick={() => onChoice(choice?.kind === "custom" ? choice : EMPTY_CUSTOM)}>
-          Своя…
+        <Chip active={choice?.kind === "custom" && !choice.bag} onClick={() => onChoice(choice?.kind === "custom" && !choice.bag ? choice : EMPTY_CUSTOM)}>
+          Своя коробка…
+        </Chip>
+        <Chip active={choice?.kind === "custom" && !!choice.bag} onClick={() => onChoice(choice?.kind === "custom" && choice.bag ? choice : EMPTY_BAG)}>
+          Свой пакет…
         </Chip>
       </div>
       {selected && choice && <Heights box={selected} choice={choice} postomat={postomat} onChoice={onChoice} />}

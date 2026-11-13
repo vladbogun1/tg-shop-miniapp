@@ -85,7 +85,7 @@ public class PackingConfirmation {
 
     /** The box chosen: a catalog box (height null = full / a bag's thickness) or typed-in sides. */
     private record Choice(NpBox box, String name, int lengthMm, int widthMm, Integer heightMm, int tareG,
-                          boolean saveAsBox) {
+                          boolean saveAsBox, boolean bag) {
     }
 
     public Confirmed confirm(String orderId, ConfirmBox req) {
@@ -110,7 +110,7 @@ public class PackingConfirmation {
         List<Unit> units = parcels.units(order);
         int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
         int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
-        int[] cell = c.box() != null && c.box().bag() ? postomats.cell(service, order) : null;
+        int[] cell = c.bag() ? postomats.cell(service, order) : null;
         int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
         int length = folded == null ? c.lengthMm() : folded[0];
         int width = folded == null ? c.widthMm() : folded[1];
@@ -137,9 +137,9 @@ public class PackingConfirmation {
         boolean created = s == null;
         boolean numberChanged = !created && !s.getTtn().equals(target.getTtn());
         NpBox box = c.box() != null ? c.box()
-                : c.saveAsBox() ? catalog.saveOwn(ownName(c, height), c.lengthMm(), c.widthMm(), height) : null;
-        String label = (box != null ? BoxOptions.option(box, height).label() : customLabel(c.name(), c.lengthMm(),
-                c.widthMm(), height))
+                : c.saveAsBox() ? catalog.saveOwn(ownName(c, height), c.lengthMm(), c.widthMm(), height, c.bag()) : null;
+        String label = (box != null ? BoxOptions.option(box, height).label() : c.bag() ? bagLabel(c.name(),
+                c.lengthMm(), c.widthMm()) : customLabel(c.name(), c.lengthMm(), c.widthMm(), height))
                 + (folded == null ? "" : " · сложить до " + BoxOptions.cm(length) + "×" + BoxOptions.cm(width) + " см");
         byte[] boxId = box == null ? null : box.getId();
         Instant now = clock.instant();
@@ -222,20 +222,23 @@ public class PackingConfirmation {
             if (h == null && !box.bag()) {
                 throw NpErrors.bad("У коробки «" + box.getName() + "» не указана высота");
             }
-            return new Choice(box, box.getName(), box.getLengthMm(), box.getWidthMm(), h, box.getTareG(), false);
+            return new Choice(box, box.getName(), box.getLengthMm(), box.getWidthMm(), h, box.getTareG(), false,
+                    box.bag());
         }
         CustomBox c = req.custom();
         if (c == null) {
             throw NpErrors.bad("Выберите коробку или впишите размеры");
         }
-        if (!side(c.lengthMm()) || !side(c.widthMm()) || !side(c.heightMm())) {
-            throw NpErrors.bad("Размеры коробки — от 1 до 300 см");
+        if (!side(c.lengthMm()) || !side(c.widthMm()) || (!c.isBag() && !side(c.heightMm()))) {
+            throw NpErrors.bad(c.isBag() ? "Размеры пакета — от 1 до 300 см" : "Размеры коробки — от 1 до 300 см");
         }
         String name = c.name() == null || c.name().isBlank() ? null : c.name().trim();
         if (name != null && name.length() > 60) {
             throw NpErrors.bad("Название коробки — до 60 символов");
         }
-        return new Choice(null, name, c.lengthMm(), c.widthMm(), c.heightMm(), 0, c.saveAsBox());
+        // An own bag is as thick as the goods (like «Пакет НП»), whatever was typed for its height.
+        return new Choice(null, name, c.lengthMm(), c.widthMm(), c.isBag() ? null : c.heightMm(), 0, c.saveAsBox(),
+                c.isBag());
     }
 
     private static boolean side(Integer mm) {
@@ -251,7 +254,15 @@ public class PackingConfirmation {
     }
 
     private static String ownName(Choice c, int heightMm) {
-        return c.name() != null ? c.name() : customLabel(null, c.lengthMm(), c.widthMm(), heightMm);
+        if (c.name() != null) {
+            return c.name();
+        }
+        return c.bag() ? bagLabel(null, c.lengthMm(), c.widthMm()) : customLabel(null, c.lengthMm(), c.widthMm(), heightMm);
+    }
+
+    /** «Свой пакет 55×50 см» / «Стретч 55×50 см». */
+    static String bagLabel(String name, int lengthMm, int widthMm) {
+        return (name == null ? "Свой пакет" : name) + " " + BoxOptions.cm(lengthMm) + "×" + BoxOptions.cm(widthMm) + " см";
     }
 
     /** «Своя коробка 40×24×9,5 см» / «Короб от клавиатуры 45×15×5 см». */

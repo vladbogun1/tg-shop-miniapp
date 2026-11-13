@@ -28,6 +28,10 @@ function ChoiceGlyph({ boxes, choice }: { boxes: NpBox[]; choice: PackChoice | n
     const b = boxes.find((x) => x.id === choice.boxId);
     return b ? <BoxGlyph box={b} heightMm={choice.heightMm} size={44} className="shrink-0" /> : null;
   }
+  if (choice?.kind === "custom" && choice.bag) {
+    const [l, w] = [toMm(choice.l), toMm(choice.w)];
+    if (l && w) return <BoxGlyph box={{ kind: "BAG", lengthMm: l, widthMm: w, heightsMm: [] }} size={44} className="shrink-0" />;
+  }
   if (choice?.kind === "custom") {
     const [l, w, h] = [toMm(choice.l), toMm(choice.w), toMm(choice.h)];
     if (l && w && h) return <BoxGlyph box={{ lengthMm: l, widthMm: w, heightsMm: [h] }} size={44} className="shrink-0" />;
@@ -47,8 +51,8 @@ function Confirmed({ p, onEdit }: { p: Packing; onEdit?: () => void }) {
         </span>
       </span>
       {onEdit && (
-        <Button size="sm" variant="ghost" className="pointer-coarse:min-h-11" icon={<Pencil className="h-3.5 w-3.5" />} onClick={onEdit}>
-          Изменить
+        <Button size="sm" variant="surface" className="pointer-coarse:min-h-11" icon={<Pencil className="h-3.5 w-3.5" />} onClick={onEdit}>
+          Переупаковать
         </Button>
       )}
     </div>
@@ -58,7 +62,8 @@ function Confirmed({ p, onEdit }: { p: Packing; onEdit?: () => void }) {
 /** Пакет в поштомат: сервер сложит его до ячейки — упаковщик должен свернуть так же. */
 function BagFoldHint({ boxes, choice }: { boxes: NpBox[]; choice: PackChoice | null }) {
   const box = choice?.kind === "box" ? boxes.find((b) => b.id === choice.boxId) : undefined;
-  if (!box || !isBagBox(box)) return null;
+  const ownBag = choice?.kind === "custom" && !!choice.bag;
+  if (!ownBag && (!box || !isBagBox(box))) return null;
   return <p className="text-[12.5px] text-[var(--text-muted)]">В поштомат: сверните пакет по товару, не шире 40 см — в ТТН уйдёт сложенный размер.</p>;
 }
 

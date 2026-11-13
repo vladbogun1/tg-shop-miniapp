@@ -38,6 +38,7 @@ import static com.maxsolch.shop.delivery.app.NpFixtures.ORDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -267,12 +268,12 @@ class PackingConfirmationTest {
         own.setWidthMm(150);
         own.setHeightsMm("50");
         own.setTareG(0);
-        when(catalog.saveOwn("Короб от клавиатуры", 450, 150, 50)).thenReturn(own);
+        when(catalog.saveOwn("Короб от клавиатуры", 450, 150, 50, false)).thenReturn(own);
 
         confirmation.confirm(ORDER_ID, new ConfirmBox(null, null,
                 new CustomBox("Короб от клавиатуры", 450, 150, 50, true), 1400, null));
 
-        verify(catalog).saveOwn("Короб от клавиатуры", 450, 150, 50);
+        verify(catalog).saveOwn("Короб от клавиатуры", 450, 150, 50, false);
         assertThat(row.getBoxLabel()).isEqualTo("Короб от клавиатуры");
         assertThat(row.getBoxId()).isEqualTo(own.getId());
         verify(memory).remember(any(), any());
@@ -282,12 +283,20 @@ class PackingConfirmationTest {
     void typedInSidesWithoutSavingGetAPlainLabel() {
         confirmation.confirm(ORDER_ID, new ConfirmBox(null, null, new CustomBox(null, 400, 240, 95, false), null,
                 null));
-        verify(catalog, never()).saveOwn(anyString(), anyInt(), anyInt(), anyInt());
+        verify(catalog, never()).saveOwn(anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
         assertThat(row.getBoxLabel()).isEqualTo("Своя коробка 40×24×9,5 см");
         assertThat(row.getBoxId()).isNull();
         ArgumentCaptor<PackingMemoryEntry> e = ArgumentCaptor.forClass(PackingMemoryEntry.class);
         verify(memory).remember(e.capture(), any());
         assertThat(e.getValue().boxKey()).isEqualTo("custom:400x240x95");
+    }
+
+    @Test
+    void anOwnBagIsAsThickAsTheGoodsAndSavedAsABag() {
+        confirmation.confirm(ORDER_ID, new ConfirmBox(null, null,
+                new CustomBox("Стретч", 550, 500, null, true, true), null, null));
+        verify(catalog).saveOwn(eq("Стретч"), eq(550), eq(500), anyInt(), eq(true));
+        assertThat(row.getBoxLabel()).isEqualTo("Стретч 55×50 см");
     }
 
     @Test

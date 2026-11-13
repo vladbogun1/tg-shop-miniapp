@@ -50,13 +50,13 @@ public class NpBoxCatalog {
     }
 
     /** Our own box, in stock, after the catalog rows; no price or tare known yet (the owner fills them in). */
-    NpBox saveOwn(String name, int lengthMm, int widthMm, int heightMm) {
+    NpBox saveOwn(String name, int lengthMm, int widthMm, int heightMm, boolean bag) {
         NpBox b = new NpBox();
         b.setName(name);
-        b.setKind(NpBox.KIND_BOX);
+        b.setKind(bag ? NpBox.KIND_BAG : NpBox.KIND_BOX);
         b.setLengthMm(lengthMm);
         b.setWidthMm(widthMm);
-        b.setHeightsMm(String.valueOf(heightMm));
+        b.setHeightsMm(bag ? null : String.valueOf(heightMm));
         b.setInStock(true);
         b.setSortOrder(nextSortOrder());
         return boxes.save(b);

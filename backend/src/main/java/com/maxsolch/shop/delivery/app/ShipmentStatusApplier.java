@@ -71,9 +71,16 @@ public class ShipmentStatusApplier {
         }
     }
 
-    /** What to do after the row is saved: move the order, tell the customer it arrived. */
+    /**
+     * What to do after the row is saved: move the order, tell the customer it arrived; {@code dropped} — the
+     * waybill was deleted in the NP cabinet before sending, the order no longer carries its number.
+     */
     private record Effects(byte[] orderId, String ttn, ShipmentStage stage, boolean arrivedFirst, boolean move,
-                           long codMinor) {
+                           long codMinor, boolean dropped) {
+
+        Effects(byte[] orderId, String ttn, ShipmentStage stage, boolean arrivedFirst, boolean move, long codMinor) {
+            this(orderId, ttn, stage, arrivedFirst, move, codMinor, false);
+        }
     }
 
     /** @param polled true from the poll (stamps {@code last_polled_at}) */
@@ -88,6 +95,10 @@ public class ShipmentStatusApplier {
             return;
         }
         Effects done = fx;
+        if (done.dropped()) {
+            dropTracking(done.orderId(), done.ttn());
+            return;
+        }
         if (done.move()) {
             moveOrder(done.orderId(), done.ttn(), done.stage(), done.codMinor());
         }
@@ -135,6 +146,14 @@ public class ShipmentStatusApplier {
             if (next == ShipmentStage.RECEIVED) {
                 s.setReceivedAt(at);
             }
+        }
+        if (next == ShipmentStage.CANCELLED && old != next && OrderShipment.ORIGIN_API.equals(s.getOrigin())
+                && orderOpen(s.getOrderId())) {
+            // Deleted in the NP cabinet before it was sent (#e90378e3, 13.11.2026): history only, like our own
+            // «Отменить ТТН» — otherwise the order is stuck with a dead waybill and no button to make a new one.
+            s.setActive(false);
+            log.info("NP waybill {} was deleted at NP before sending: dropped from its order", s.getTtn());
+            return new Effects(s.getOrderId(), s.getTtn(), next, false, false, 0, true);
         }
         if (s.isQuiet()) {
             // Backfilled: the first status only catches up — no message, no reminder. One exception: a parcel the
@@ -218,6 +237,17 @@ public class ShipmentStatusApplier {
         if (!known.contains(key)) {
             alerts.raise(NpAlerts.Kind.STATUS_CODES, head + (known.isEmpty() ? key : known + "; " + key) + tail);
         }
+    }
+
+    private boolean orderOpen(byte[] orderId) {
+        return orders.find(orderId).filter(o -> o.status() == OrderStatus.NEW || o.status() == OrderStatus.APPROVED)
+                .isPresent();
+    }
+
+    /** The open order no longer carries the deleted number (a typed one would be tracked again). */
+    private void dropTracking(byte[] orderId, String ttn) {
+        orders.find(orderId).filter(o -> ttn.equals(o.trackingNumber()))
+                .ifPresent(o -> orders.setTrackingNumber(orderId, null));
     }
 
     /** SHIPPED once NP accepted the parcel, DELIVERED once it was picked up (both switchable). */

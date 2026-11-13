@@ -7970,6 +7970,7 @@ export interface components {
             type?: string;
         };
         CustomBox: {
+            bag?: boolean;
             /** Format: int32 */
             heightMm?: number;
             /** Format: int32 */

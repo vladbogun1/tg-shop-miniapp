@@ -32,6 +32,11 @@ export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; forma
           {o.shipmentStatusText && (
             <span className="min-w-0 flex-1 basis-48 break-words text-[12.5px] text-[var(--text-muted)]">{o.shipmentStatusText}</span>
           )}
+          {o.shipmentOrigin === "API" && (o.shipmentStage === "CREATED" || o.shipmentStage === "NOT_FOUND") && (
+            <Button size="sm" variant="ghost" icon={<RotateCcw className="h-4 w-4" />} onClick={() => onTtn("remake")}>
+              Пересоздать ТТН
+            </Button>
+          )}
         </>
       ) : (
         <>

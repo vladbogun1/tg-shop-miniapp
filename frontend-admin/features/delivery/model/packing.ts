@@ -72,7 +72,7 @@ export function ownBoxBody(f: OwnBoxForm): NpBoxEdit | null {
 /** Что выбрал упаковщик: коробку из списка (высота — линия сгиба; null — полная / у пакета) или свои размеры. */
 export type PackChoice =
   | { kind: "box"; boxId: string; heightMm: number | null }
-  | { kind: "custom"; name: string; l: string; w: string; h: string; save: boolean };
+  | { kind: "custom"; name: string; l: string; w: string; h: string; save: boolean; bag?: boolean };
 
 /** Коробка и высота по подписи «Коробка 5 кг · 13 см» (так сервер пишет совет); пакет — по имени. */
 export function choiceByLabel(boxes: NpBox[], label: string | null | undefined): Extract<PackChoice, { kind: "box" }> | null {
@@ -89,9 +89,9 @@ export function choiceByLabel(boxes: NpBox[], label: string | null | undefined):
 export function choiceLabel(boxes: NpBox[], c: PackChoice | null): string {
   if (!c) return "—";
   if (c.kind === "custom") {
-    const sides = [c.l, c.w, c.h].map((x) => toMm(x));
+    const sides = (c.bag ? [c.l, c.w] : [c.l, c.w, c.h]).map((x) => toMm(x));
     const size = sides.every(Boolean) ? ` ${sides.map((x) => cm(x as number)).join("×")} см` : "";
-    return `${c.name.trim() || "Своя коробка"}${size}`;
+    return `${c.name.trim() || (c.bag ? "Свой пакет" : "Своя коробка")}${size}`;
   }
   const b = boxes.find((x) => x.id === c.boxId);
   if (!b) return "—";
@@ -103,6 +103,8 @@ export function confirmBody(c: PackChoice, weight: string): ConfirmBoxBody | nul
   const weightG = intOrNull(weight) ?? undefined;
   if (c.kind === "box") return { boxId: c.boxId, heightMm: c.heightMm ?? undefined, weightG };
   const [lengthMm, widthMm, heightMm] = [toMm(c.l), toMm(c.w), toMm(c.h)];
+  // Свой пакет: только длина и ширина — толщину сервер считает по товару, как у «Пакета НП».
+  if (c.bag) return lengthMm && widthMm ? { custom: { name: c.name.trim() || undefined, lengthMm, widthMm, saveAsBox: c.save, bag: true }, weightG } : null;
   if (!lengthMm || !widthMm || !heightMm) return null;
   return { custom: { name: c.name.trim() || undefined, lengthMm, widthMm, heightMm, saveAsBox: c.save }, weightG };
 }

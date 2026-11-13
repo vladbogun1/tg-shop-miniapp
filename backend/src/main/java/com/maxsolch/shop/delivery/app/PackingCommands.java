@@ -20,8 +20,18 @@ public final class PackingCommands {
 
     /**
      * Sides in mm of a box that is not in the list; {@code saveAsBox} = add it to «Коробки» (in stock) for next time.
+     * {@code bag} true: an own bag — length and width only, its thickness is the goods' (heightMm may be null).
      */
-    public record CustomBox(String name, Integer lengthMm, Integer widthMm, Integer heightMm, boolean saveAsBox) {
+    public record CustomBox(String name, Integer lengthMm, Integer widthMm, Integer heightMm, boolean saveAsBox,
+                            Boolean bag) {
+
+        public CustomBox(String name, Integer lengthMm, Integer widthMm, Integer heightMm, boolean saveAsBox) {
+            this(name, lengthMm, widthMm, heightMm, saveAsBox, null);
+        }
+
+        public boolean isBag() {
+            return Boolean.TRUE.equals(bag);
+        }
     }
 
     /**

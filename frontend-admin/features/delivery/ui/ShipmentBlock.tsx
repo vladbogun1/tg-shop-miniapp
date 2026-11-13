@@ -15,7 +15,7 @@
  */
 import { useState } from "react";
 import { useIsSuperAdmin } from "@/features/staff";
-import { ExternalLink, Pencil, RefreshCw, Trash2, Truck } from "lucide-react";
+import { ExternalLink, Pencil, RefreshCw, RotateCcw, Trash2, Truck } from "lucide-react";
 import { useConfirm } from "@shop/ui/confirm";
 import { Button } from "@shop/ui/admin-button";
 import { formatDateTime, timeAgo } from "@shop/core/time";
@@ -95,6 +95,7 @@ function ShipmentActions({
   editable,
   st,
   onEdit,
+  onRemake,
   onChanged,
 }: {
   order: ShipmentOrder;
@@ -102,6 +103,8 @@ function ShipmentActions({
   editable: boolean;
   st: StaleState;
   onEdit: () => void;
+  /** Удалить в НП и создать заново (напечатанную — с новым номером). */
+  onRemake: () => void;
   onChanged: () => void;
 }) {
   const confirm = useConfirm();
@@ -130,6 +133,11 @@ function ShipmentActions({
           disabledTitle={st.stale ? "ТТН устарела — сначала перестворите её" : "Обновляем ТТН…"}
           confirmFirst={s.packing?.unconfirmed ? UNCONFIRMED_PRINT : undefined}
         />
+      )}
+      {editable && (
+        <Button size="sm" variant="surface" icon={<RotateCcw className="h-4 w-4" />} onClick={onRemake}>
+          Пересоздать ТТН
+        </Button>
       )}
       {editable && (
         <Button size="sm" variant="danger" loading={cancel.isPending} icon={<Trash2 className="h-4 w-4" />} onClick={askCancel}>
@@ -171,7 +179,7 @@ function ShipmentView({
       <ShipmentFacts s={s} currency={order.currency ?? "UAH"} />
       <ShipmentPacking orderId={order.id} s={s} open={open} onChanged={onChanged} />
       <PollLine s={s} />
-      <ShipmentActions order={order} s={s} editable={editable} st={st} onEdit={() => onModal("edit")} onChanged={onChanged} />
+      <ShipmentActions order={order} s={s} editable={editable} st={st} onEdit={() => onModal("edit")} onRemake={() => onModal("remake")} onChanged={onChanged} />
       <StaleDialog
         open={st.stale && seen !== st.key && !modalOpen}
         ttn={s.ttn}

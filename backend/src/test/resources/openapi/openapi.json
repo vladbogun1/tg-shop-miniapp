@@ -6169,6 +6169,9 @@
       },
       "CustomBox" : {
         "properties" : {
+          "bag" : {
+            "type" : "boolean"
+          },
           "heightMm" : {
             "format" : "int32",
             "type" : "integer"
