@@ -102,6 +102,21 @@ class WaybillRequestTest {
     }
 
     @Test
+    void documentsGoAtOneOfNpsThreeWeights() {
+        // NP refuses any other weight for «Документи» («Weight is not allowed for Documents», order #5183559b, 13.11).
+        Parcel envelope = new Parcel(130, 200, 150, 10, "test").withDocuments(true);
+        ObjectNode p = WaybillRequest.build(spec(NpServiceType.WAREHOUSE, 100_00, 0, envelope));
+
+        assertThat(p.get("CargoType").asText()).isEqualTo("Documents");
+        assertThat(p.get("Weight").asText()).isEqualTo("0.5");
+        assertThat(p.has("OptionsSeat")).isFalse();
+        assertThat(List.of(60, 100, 101, 500, 501, 1000).stream()
+                .map(g -> WaybillRequest.weight(new Parcel(g, 200, 150, 10, "test").withDocuments(true))))
+                .containsExactly("0.1", "0.1", "0.5", "0.5", "1", "1");
+        assertThat(WaybillRequest.weight(new Parcel(130, 200, 150, 10, "test"))).isEqualTo("0.13");
+    }
+
+    @Test
     void heavyParcelIsCargoExceptForALocker() {
         var heavy = new Parcel(31_000, 600, 400, 400, "test");
         assertThat(WaybillRequest.build(spec(NpServiceType.WAREHOUSE, 100, 0, heavy)).get("CargoType").asText()).isEqualTo("Cargo");

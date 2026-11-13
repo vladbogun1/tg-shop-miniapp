@@ -50,7 +50,7 @@ public final class WaybillRequest {
         p.put("CargoType", cargoType(s.parcel(), s.postomat()));
         p.put("ServiceType", s.serviceType());
         p.put("SeatsAmount", String.valueOf(s.parcel().seats().size()));
-        p.put("Weight", kg(s.parcel().weightG()));
+        p.put("Weight", weight(s.parcel()));
         p.put("VolumeGeneral", m3(s.parcel()));
         p.put("Description", s.description() == null || s.description().isBlank() ? "Товари" : s.description().trim());
         // The declared value is at least what NP collects: «Контроль оплати» cannot exceed it.
@@ -91,6 +91,18 @@ public final class WaybillRequest {
             return "Documents";
         }
         return parcel.weightG() > PARCEL_MAX_G && !postomat ? "Cargo" : "Parcel";
+    }
+
+    /**
+     * {@code Weight} of the waybill. «Документи» go at one of NP's three weights only — 0.1, 0.5 or 1 kg, anything
+     * else is refused («Weight is not allowed for Documents») — so their weight is rounded up to the next one.
+     */
+    public static String weight(Parcel parcel) {
+        if (!parcel.documents()) {
+            return kg(parcel.weightG());
+        }
+        int g = parcel.weightG();
+        return g <= 100 ? "0.1" : g <= 500 ? "0.5" : "1";
     }
 
     /** {@code OptionsSeat}: one entry per seat with its own sides and weight (NP prices each seat). */

@@ -118,7 +118,7 @@ public class NovaPoshtaPriceService {
             p.put("ServiceType", service.npServiceType());
             p.put("CargoType", WaybillRequest.cargoType(bucketed, service == NpServiceType.POSTOMAT));
             p.put("SeatsAmount", String.valueOf(bucketed.seats().size()));
-            p.put("Weight", WaybillRequest.kg(bucketed.weightG()));
+            p.put("Weight", WaybillRequest.weight(bucketed));
             p.put("Cost", WaybillRequest.uahCeil(declared));
             // Without OptionsSeat NP prices by the total weight only (audit: 148.5 instead of 193.5);
             // «Документи» are priced by weight on purpose.
