@@ -19,7 +19,7 @@ class ShipmentRecipientTest {
         return new ShippingOrder(NpFixtures.ORDER, "01020304", OrderStatus.APPROVED, DeliveryMethod.NOVA_POSHTA,
                 NpServiceType.WAREHOUSE, "city", "Харків", "wh-1", "Відділення №1", null, null, null, null,
                 customerName, last, first, null, "+380991090362", false, 1000_00, 0, true, 0, false, false, false,
-                null, null, null, List.of(), "");
+                null, null, null, List.of(), "", null);
     }
 
     @Test

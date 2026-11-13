@@ -28,6 +28,7 @@ import type {
   ProductSize,
   SenderConfig,
   SenderResponse,
+  LinkedParcel,
   Shipment,
   ShipmentOptions,
   ShipmentPreview,
@@ -45,6 +46,8 @@ export const shipmentApi = {
   update: (orderId: string, options: ShipmentOptions) => apiPut<Shipment>(`/api/admin/orders/${orderId}/shipment`, options),
   cancel: (orderId: string) => apiDelete<void>(`/api/admin/orders/${orderId}/shipment`),
   refresh: (orderId: string) => apiPost<Shipment>(`/api/admin/orders/${orderId}/shipment/refresh`, {}),
+  /** Связанные ТТН: возврат к нам, переадресация, возврат после получения (старые первыми). */
+  links: (orderId: string) => apiGet<LinkedParcel[]>(`/api/admin/orders/${q(orderId)}/parcel-links`),
   batch: (orderIds: string[], senderWarehouseRef?: string | null) =>
     apiPost<BatchResult[]>("/api/admin/shipments/batch", { orderIds, senderWarehouseRef: senderWarehouseRef || undefined }),
 };

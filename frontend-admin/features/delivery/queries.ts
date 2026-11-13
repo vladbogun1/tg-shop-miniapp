@@ -42,6 +42,11 @@ export function useCancelShipment(orderId: string, onDone: () => void) {
   });
 }
 
+/** Связанные ТТН заказа; перечитываются, когда посылку опросили снова. */
+export function useParcelLinks(orderId: string, polledAt: string) {
+  return useQuery({ queryKey: deliveryKeys.links(orderId, polledAt), queryFn: () => shipmentApi.links(orderId), retry: false });
+}
+
 export function useRefreshShipment(orderId: string, onDone: () => void) {
   return useApiMutation({
     mutationFn: () => shipmentApi.refresh(orderId),
