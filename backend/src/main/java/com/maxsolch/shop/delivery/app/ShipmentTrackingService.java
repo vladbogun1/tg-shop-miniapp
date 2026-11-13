@@ -100,26 +100,33 @@ public class ShipmentTrackingService {
                 List.of(ShipmentStage.RECEIVED.name(), ShipmentStage.CANCELLED.name()),
                 now.minus(MIN_INTERVAL), now.minus(maxAge()), PageRequest.of(0, 1000)));
         due.addAll(recheckReceived(now));
-        due.addAll(watchReceived(now, due));
+        List<OrderShipment> watched = watchReceived(now, due);
         int failed = 0;
         String lastError = "";
-        for (int i = 0; i < due.size(); i += BATCH) {
-            String err = poll(due.subList(i, Math.min(due.size(), i + BATCH)));
-            if (err != null) {
-                failed++;
-                lastError = err;
+        int batches = 0;
+        for (List<OrderShipment> rows : List.of(due, watched)) {
+            // The watched ones only show what NP made on their basis (returns, redirects): their own row and the
+            // order stay as they are — the money closed with the recheck above.
+            boolean apply = rows == due;
+            for (int i = 0; i < rows.size(); i += BATCH) {
+                batches++;
+                String err = poll(rows.subList(i, Math.min(rows.size(), i + BATCH)), apply);
+                if (err != null) {
+                    failed++;
+                    lastError = err;
+                }
             }
         }
-        if (!due.isEmpty()) {
+        if (batches > 0) {
             if (failed > 0) {
                 alerts.raise(NpAlerts.Kind.POLL, "Статусы посылок не обновились (" + failed + " из "
-                        + ((due.size() + BATCH - 1) / BATCH) + " запросов к Новой почте): " + lastError);
+                        + batches + " запросов к Новой почте): " + lastError);
             } else {
                 alerts.clear(NpAlerts.Kind.POLL);
             }
         }
         remindStorage(now);
-        return due.size();
+        return due.size() + watched.size();
     }
 
     /**
@@ -157,12 +164,17 @@ public class ShipmentTrackingService {
     /** «Обновить» in the order: poll this order's waybill now. */
     public Optional<OrderShipment> refresh(byte[] orderId) {
         Optional<OrderShipment> s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId);
-        s.ifPresent(x -> poll(List.of(x)));
+        s.ifPresent(x -> poll(List.of(x), true));
         return s.flatMap(x -> shipments.findById(x.getId()));
     }
 
-    /** @return null, or NP's error when it did not answer for this batch */
-    String poll(List<OrderShipment> all) {
+    /**
+     * {@code apply} = NP's word goes into the row and may move the order; false = only the linked waybills are looked
+     * for (the row is stamped as polled).
+     *
+     * @return null, or NP's error when it did not answer for this batch
+     */
+    String poll(List<OrderShipment> all, boolean apply) {
         // Dry-run numbers (demo stand) do not exist at NP: stamp them so they stop taking the head of the queue.
         List<OrderShipment> batch = all.stream().filter(s -> !DryRunLabels.isDry(s.getTtn())).toList();
         if (batch.size() < all.size()) {
@@ -196,7 +208,11 @@ public class ShipmentTrackingService {
                 continue;
             }
             try {
-                applier.apply(s.getId(), parse(n), true);
+                if (apply) {
+                    applier.apply(s.getId(), parse(n), true);
+                } else {
+                    stamp(List.of(s), null, false);
+                }
             } catch (RuntimeException e) {
                 log.warn("NP status of waybill {} not applied: {}", s.getTtn(), e.getMessage());
             }

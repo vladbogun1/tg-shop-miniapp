@@ -277,6 +277,38 @@ class PickupMoneyTest {
                 NOW.minus(ShipmentTrackingService.MIN_INTERVAL), org.springframework.data.domain.PageRequest.of(0, 1000));
     }
 
+    @Test
+    void aParcelPickedUpLongAgo_onlyLooksForWhatNpMadeOnItsBasis() throws Exception {
+        // 12 days after the pickup the order is DELIVERED; NP now answers with a «return after receipt» and another
+        // status. The row and the order stay as they are, only the linked waybill is looked for.
+        var gateway = mock(com.maxsolch.shop.delivery.domain.NovaPoshtaGateway.class);
+        var json = new ObjectMapper();
+        when(gateway.keyConfigured()).thenReturn(true);
+        when(gateway.props()).thenAnswer(i -> json.createObjectNode());
+        when(gateway.array()).thenAnswer(i -> json.createArrayNode());
+        when(gateway.call(anyString(), anyString(), any(com.fasterxml.jackson.databind.JsonNode.class)))
+                .thenReturn(json.readTree("[{\"Number\":\"20450000000001\",\"StatusCode\":\"7\","
+                        + "\"AfterpaymentOnGoodsCost\":\"1\",\"LightReturnNumber\":\"20450000000099\"}]"));
+        ShipmentStatusApplier spy = mock(ShipmentStatusApplier.class);
+        LinkedParcels linked = mock(LinkedParcels.class);
+        ShipmentTrackingService tracking = new ShipmentTrackingService(shipments, orders, gateway, settings, spy,
+                linked, mock(ShipmentNotifier.class), mock(NpAlerts.class),
+                new TransactionTemplate(mock(PlatformTransactionManager.class)), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        s.setStage(ShipmentStage.RECEIVED.name());
+        when(shipments.findDueForPoll(any(), any(), any(), any())).thenReturn(List.of());
+        when(shipments.findReceivedSince(any(), any(), any(), any())).thenReturn(List.of(s));
+        ShippingOrder delivered = order(OrderStatus.DELIVERED);
+        when(orders.findAll(any())).thenReturn(List.of(delivered));
+
+        assertThat(tracking.pollDue()).isEqualTo(1);
+
+        verify(spy, never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        verify(linked).discover(org.mockito.ArgumentMatchers.eq(s), any());
+        assertThat(s.getLastPolledAt()).isEqualTo(NOW);
+        assertThat(s.getStage()).isEqualTo(ShipmentStage.RECEIVED.name());
+    }
+
     private ShippingOrder order(OrderStatus status) {
         return order(status, COD);
     }
