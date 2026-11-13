@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWait, groupPreview, groupsTotal, hasGroupAction, isRefundRow, knownType, rowLimit, snoozedTotal, visibleGroups, visibleRows, withoutItem } from "./inbox";
+import { formatWait, goingBackOf, groupPreview, groupsTotal, hasGroupAction, isRefundRow, knownType, rowLimit, snoozedTotal, visibleGroups, visibleRows, withoutItem } from "./inbox";
 import type { Inbox, InboxGroup, InboxItem } from "./types";
 
 /** Необязательные поля сервер шлёт как null; в тестах они не нужны. */
@@ -12,6 +12,15 @@ describe("inbox model", () => {
   it("knownType", () => {
     expect(knownType("CHAT")).toBe("CHAT");
     expect(knownType("NEW_KIND")).toBeNull();
+  });
+  it("goingBackOf: refused / not picked up while the order is still shipped", () => {
+    const row = (version: string, status: string | null = "SHIPPED", type = "PARCEL") => ({ type, version, status });
+    expect(goingBackOf(row("REFUSED:REFUSED"))).toBe("back:REFUSED_AT_POST");
+    expect(goingBackOf(row("RETURNING:RETURNING"))).toBe("back:REFUSED_AT_POST");
+    expect(goingBackOf(row("RETURNING:UNCLAIMED"))).toBe("back:NO_RESPONSE");
+    expect(goingBackOf(row("RETURNING:UNCLAIMED", "REJECTED"))).toBeUndefined();
+    expect(goingBackOf(row("RECEIVED:PARTIAL_PICKUP"))).toBeUndefined();
+    expect(goingBackOf(row("REFUSED:REFUSED", "SHIPPED", "RETURN"))).toBeUndefined();
   });
   it("isRefundRow", () => {
     const base = { type: "PAYMENT", version: "", subtitle: null };

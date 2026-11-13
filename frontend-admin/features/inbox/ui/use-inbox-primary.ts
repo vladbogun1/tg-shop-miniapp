@@ -7,12 +7,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { inboxKeys } from "../keys";
+import { goingBackOf, type GoingBack } from "../model/inbox";
 import type { InboxItem } from "../model/types";
 
 export interface OpenOrder {
   id: string;
   tab: "details" | "chat";
   payment: boolean;
+  /** «Посылки» → «Едет назад»: the drawer opens «Отклонить» filled in. */
+  back?: GoingBack;
 }
 
 /**
@@ -70,7 +73,8 @@ export function useInboxPrimary() {
         router.push(`/preorders/drafts/${encodeURIComponent(item.entityId)}`);
         break;
       default:
-        if (orderId) setOrder({ id: orderId, tab: "details", payment: false });
+        // «Посылки»: a parcel coming back opens «Отклонить» filled in (goingBackOf), the rest just the order.
+        if (orderId) setOrder({ id: orderId, tab: "details", payment: false, back: goingBackOf(item) });
     }
   }
 

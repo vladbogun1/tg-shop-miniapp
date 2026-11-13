@@ -100,7 +100,7 @@ export function InboxScreen({ order: slot }: { order: InboxOrderSlot }) {
       <OrderDrawer
         orderId={order?.id ?? null}
         initialTab={order?.tab ?? "details"}
-        initialAction={order?.payment ? "payment" : undefined}
+        initialAction={order?.payment ? "payment" : order?.back}
         onClose={() => {
           closeOrder();
           void qc.invalidateQueries({ queryKey: inboxKeys.all() });

@@ -37,7 +37,8 @@ interface Props {
   initialTab?: "details" | "chat";
   /**
    * Once the order has loaded: «payment» scrolls to «Онлайн-оплата» («Внимание» → «Оплаты»),
-   * «return» opens the return wizard, «received» opens «Посылка вернулась» (board «Едет назад»).
+   * «return» opens the return wizard, «received» opens «Посылка вернулась» (board «Едет назад»),
+   * «back:<reason>» opens «Отклонить» filled in for a parcel coming back («Внимание» → «Посылки»).
    */
   initialAction?: InitialAction;
   /** `onClose` navigates to another page (the /orders/{id} deep link) — see Drawer `closeNavigates`. */
@@ -71,6 +72,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
     initialAction,
     tab,
     show,
+    requestBack: modals.requestBack,
   });
 
   // Unread customer messages for the "Чат" tab badge (the chat itself shares this cache entry).

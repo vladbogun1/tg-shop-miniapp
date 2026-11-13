@@ -49,6 +49,7 @@ public final class ShipmentStatusMapper {
             Map.entry(106, ShipmentStage.RECEIVED),
             // refused / coming back
             Map.entry(103, ShipmentStage.REFUSED),
+            Map.entry(108, ShipmentStage.REFUSED),
             Map.entry(102, ShipmentStage.RETURNING),
             Map.entry(105, ShipmentStage.RETURNING),
             Map.entry(113, ShipmentStage.RETURNING),

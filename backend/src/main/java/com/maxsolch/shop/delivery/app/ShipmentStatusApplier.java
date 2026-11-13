@@ -56,9 +56,16 @@ public class ShipmentStatusApplier {
     /**
      * What NP said about one waybill. {@code recipientPhone}: the phone NP shows for the recipient (only when the
      * phone we asked with matched); null = not shown. {@code at}: when it happened (webhook), null = now (poll).
+     * {@code collectedMinor}: «Контроль оплати» NP shows (poll only, null = not shown); at pickup, what it collected.
      */
     public record StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
-                               String returnTtn, Instant at, String recipientPhone, NpMeasure measure) {
+                               String returnTtn, Instant at, String recipientPhone, NpMeasure measure,
+                               Long collectedMinor) {
+
+        public StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
+                            String returnTtn, Instant at, String recipientPhone, NpMeasure measure) {
+            this(code, text, scheduledDelivery, storagePaidFrom, returnTtn, at, recipientPhone, measure, null);
+        }
 
         public StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
                             String returnTtn, Instant at, String recipientPhone) {
@@ -73,13 +80,14 @@ public class ShipmentStatusApplier {
 
     /**
      * What to do after the row is saved: move the order, tell the customer it arrived; {@code dropped} — the
-     * waybill was deleted in the NP cabinet before sending, the order no longer carries its number.
+     * waybill was deleted in the NP cabinet before sending, the order no longer carries its number; {@code hold} —
+     * picked up, but NP did not confirm all the money collected: the order stays SHIPPED for the admin.
      */
     private record Effects(byte[] orderId, String ttn, ShipmentStage stage, boolean arrivedFirst, boolean move,
-                           long codMinor, boolean dropped) {
+                           long codMinor, boolean dropped, boolean hold) {
 
         Effects(byte[] orderId, String ttn, ShipmentStage stage, boolean arrivedFirst, boolean move, long codMinor) {
-            this(orderId, ttn, stage, arrivedFirst, move, codMinor, false);
+            this(orderId, ttn, stage, arrivedFirst, move, codMinor, false, false);
         }
     }
 
@@ -100,7 +108,7 @@ public class ShipmentStatusApplier {
             return;
         }
         if (done.move()) {
-            moveOrder(done.orderId(), done.ttn(), done.stage(), done.codMinor());
+            moveOrder(done.orderId(), done.ttn(), done.stage(), done.codMinor(), done.hold());
         }
         if (done.arrivedFirst()) {
             orders.find(done.orderId()).filter(o -> o.status() != OrderStatus.REJECTED)
@@ -125,6 +133,10 @@ public class ShipmentStatusApplier {
         ShipmentStage next = ShipmentStatusMapper.stageOf(u.code(),
                 ShipmentStatusMapper.parseOverrides(settings.getString(DeliverySettings.NP_STATUS_OVERRIDES)));
         copyFields(s, u);
+        if (next == ShipmentStage.RECEIVED && u.collectedMinor() != null) {
+            // Only at pickup it is what NP collected; before that it is the amount still to collect.
+            s.setNpCollectedMinor(u.collectedMinor());
+        }
         if (NpMeasure.accepted(u.code())) {
             // NP's re-measure at the branch: kept apart, our declared weight, sides and price stay as sent.
             s.recordNpMeasure(u.measure(), now);
@@ -153,7 +165,7 @@ public class ShipmentStatusApplier {
             // «Отменить ТТН» — otherwise the order is stuck with a dead waybill and no button to make a new one.
             s.setActive(false);
             log.info("NP waybill {} was deleted at NP before sending: dropped from its order", s.getTtn());
-            return new Effects(s.getOrderId(), s.getTtn(), next, false, false, 0, true);
+            return new Effects(s.getOrderId(), s.getTtn(), next, false, false, 0, true, false);
         }
         if (s.isQuiet()) {
             // Backfilled: the first status only catches up — no message, no reminder. One exception: a parcel the
@@ -174,7 +186,10 @@ public class ShipmentStatusApplier {
         if (arrivedFirst) {
             s.setArrivalNotifiedAt(now);
         }
-        return new Effects(s.getOrderId(), s.getTtn(), next, arrivedFirst, move, s.collects() ? s.getCodMinor() : 0);
+        // Only this very report can confirm the money: a stored amount may be older than the pickup.
+        boolean hold = next == ShipmentStage.RECEIVED && !s.pickupSettles(u.collectedMinor());
+        return new Effects(s.getOrderId(), s.getTtn(), next, arrivedFirst, move, s.collects() ? s.getCodMinor() : 0,
+                false, hold);
     }
 
     private static void copyFields(OrderShipment s, StatusUpdate u) {
@@ -250,14 +265,20 @@ public class ShipmentStatusApplier {
                 .ifPresent(o -> orders.setTrackingNumber(orderId, null));
     }
 
-    /** SHIPPED once NP accepted the parcel, DELIVERED once it was picked up (both switchable). */
-    void moveOrder(byte[] orderId, String ttn, ShipmentStage stage, long collectedMinor) {
+    /**
+     * SHIPPED once NP accepted the parcel, DELIVERED once it was picked up (both switchable); {@code hold} — picked
+     * up without NP confirming all the money: not DELIVERED, «Внимание» shows it.
+     */
+    void moveOrder(byte[] orderId, String ttn, ShipmentStage stage, long collectedMinor, boolean hold) {
         try {
             if (ShipmentStatusMapper.handedOver(stage) && settings.getBool(DeliverySettings.NP_SHIP_ON_ACCEPT)) {
                 // The parcel is physically gone: shipped even if the prepayment is still missing.
                 orders.markShipped(orderId, ttn);
             }
-            if (stage == ShipmentStage.RECEIVED && settings.getBool(DeliverySettings.NP_AUTO_DELIVER)) {
+            if (stage == ShipmentStage.RECEIVED && hold) {
+                log.info("Order {} picked up ({}) but NP did not confirm all {} collected: left for the admin",
+                        UuidUtil.toString(orderId), ttn, collectedMinor);
+            } else if (stage == ShipmentStage.RECEIVED && settings.getBool(DeliverySettings.NP_AUTO_DELIVER)) {
                 // What «Контроль оплати» collected, not the whole total.
                 orders.markDelivered(orderId, collectedMinor);
             }

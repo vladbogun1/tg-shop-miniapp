@@ -1,10 +1,11 @@
 import type { ComponentType } from "react";
+import type { GoingBack } from "./inbox";
 
 /** Props of the order drawer the inbox opens on top of itself. */
 export interface OrderDrawerProps {
   orderId: string | null;
   initialTab?: "details" | "chat";
-  initialAction?: "payment";
+  initialAction?: "payment" | GoingBack;
   onClose: () => void;
 }
 

@@ -5,6 +5,21 @@ export function knownType(type: InboxType): KnownInboxType | null {
   return (INBOX_TYPES as readonly string[]).includes(type) ? (type as KnownInboxType) : null;
 }
 
+/** «Едет назад» on a «Посылки» row: the drawer opens «Отклонить» with this reason and «посылка едет назад». */
+export type GoingBack = "back:REFUSED_AT_POST" | "back:NO_RESPONSE";
+
+/**
+ * A parcel refused or not picked up while its order is still «Отправлен» (version = `stage:kind`, the server's
+ * kinds REFUSED / RETURNING / UNCLAIMED): «Едет назад». Anything else — undefined.
+ */
+export function goingBackOf(item: { type: string; version: string; status?: string | null }): GoingBack | undefined {
+  if (item.type !== "PARCEL" || item.status !== "SHIPPED") return undefined;
+  const kind = item.version.split(":")[1];
+  if (kind === "UNCLAIMED") return "back:NO_RESPONSE";
+  if (kind === "REFUSED" || kind === "RETURNING") return "back:REFUSED_AT_POST";
+  return undefined;
+}
+
 /**
  * PAYMENT rows come in two flavours (the server tells them apart by the version prefix):
  * «Оплачен онлайн — подтвердите заказ» (`paid:…`) and «Оплачен, но отменён — верните деньги»

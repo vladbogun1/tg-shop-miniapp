@@ -112,6 +112,10 @@ public class ParcelIssues {
             return new Reason("TRACKING_STOPPED", "Статус больше не отслеживается (ТТН старше "
                     + limits.trackingMaxDays() + " дн.) — проверьте посылку в кабинете Новой почты", false);
         }
+        Reason back = goingBack(s, o, stage);
+        if (back != null) {
+            return back;
+        }
         String text = reason(s, now, limits.arrivedStaleDays(), Duration.ofDays(limits.createdStaleDays()));
         return text == null ? null : new Reason(stage.name(), text,
                 stage == ShipmentStage.REFUSED || stage == ShipmentStage.NOT_FOUND);
@@ -132,10 +136,41 @@ public class ParcelIssues {
             return rejected ? null : new Reason("CANCELLED", "ТТН удалена в Новой почте, а заказ не отклонён", true);
         }
         if (stage == ShipmentStage.RECEIVED) {
-            return o.status() == OrderStatus.SHIPPED
-                    ? new Reason("RECEIVED_SHIPPED", "Посылку забрали, а заказ всё ещё «Отправлен»", false) : null;
+            if (o.status() != OrderStatus.SHIPPED) {
+                return null;
+            }
+            return s.partlyCollected() ? new Reason("PARTIAL_PICKUP", "Частичный выкуп: Новая почта собрала "
+                    + MoneyFormat.uah(s.getNpCollectedMinor()) + " из " + MoneyFormat.uah(s.getCodMinor())
+                    + " — оформите в заказе «Возврат» → «Не забрал на почте — едет назад»", true)
+                    : new Reason("RECEIVED_SHIPPED", "Посылку забрали, а заказ всё ещё «Отправлен»", false);
         }
         return null;
+    }
+
+    /**
+     * Refused or coming back while the order is still SHIPPED: «Едет назад» on the row rejects it with the parcel on
+     * its way to us. {@code UNCLAIMED} — the customer did not come for it (NP's «не з'явився»), not a refusal.
+     */
+    private static Reason goingBack(OrderShipment s, ShippingOrder o, ShipmentStage stage) {
+        if (o.status() != OrderStatus.SHIPPED
+                || (stage != ShipmentStage.REFUSED && stage != ShipmentStage.RETURNING)) {
+            return null;
+        }
+        boolean unclaimed = unclaimed(s.getStatusText());
+        String what = unclaimed ? "Покупатель не забрал посылку"
+                : stage == ShipmentStage.REFUSED ? "Отказ от посылки" : "Посылка возвращается";
+        String back = s.getReturnTtn() != null ? " · ТТН возврата " + s.getReturnTtn() : "";
+        return new Reason(unclaimed ? "UNCLAIMED" : stage.name(),
+                what + back + " — нажмите «Едет назад»: заказ отклонится, посылка в пути к нам", true);
+    }
+
+    /** NP's «Одержувач не з'явився до відділення» in the status text (any apostrophe). */
+    static boolean unclaimed(String statusText) {
+        if (statusText == null) {
+            return false;
+        }
+        String t = statusText.toLowerCase(java.util.Locale.ROOT).replaceAll("[’ʼ`']", "");
+        return t.contains("не зявився") || t.contains("не зявилася");
     }
 
     /** The order changed after the waybill and NP was not (or could not be) updated. */

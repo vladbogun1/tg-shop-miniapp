@@ -43,7 +43,8 @@ public record NpMeasure(Integer weightG, Integer volumeWeightG, Integer factualW
         return kg == null ? null : kg.movePointRight(3).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
     }
 
-    static Long minor(JsonNode n, String f) {
+    /** NP money in hryvnias («5400», «2100.00», 5400) as kopecks; absent, blank, zero or unreadable = null. */
+    public static Long minor(JsonNode n, String f) {
         BigDecimal uah = number(n, f);
         return uah == null ? null : uah.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
     }

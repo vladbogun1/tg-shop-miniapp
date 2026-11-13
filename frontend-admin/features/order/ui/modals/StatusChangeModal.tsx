@@ -44,6 +44,8 @@ interface Props {
   loading?: boolean;
   /** «Посылка едет назад» ticked from the start (a card dropped on «Едет назад»). */
   initialInTransit?: boolean;
+  /** The reason picked from the start («Внимание» → «Посылки» → «Едет назад»). */
+  initialCode?: RejectReasonCode;
 }
 
 /** The part of the window that depends on the transition: ТТН, reason + restock, confirmation text. */
@@ -81,7 +83,7 @@ function StatusBody(props: {
   );
 }
 
-export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading, initialInTransit }: Props) {
+export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading, initialInTransit, initialCode }: Props) {
   const form = useForm<{ ttn: string; reason: string }>({ defaultValues: { ttn: "", reason: "" } });
   const { reset } = form;
   const { ttn, reason } = form.watch();
@@ -94,10 +96,10 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
   useLayoutEffect(() => {
     if (!open) return;
     reset({ ttn: "", reason: "" });
-    setCode(null);
+    setCode(initialCode ?? null);
     setRestock(true);
     setInTransit(!!initialInTransit);
-  }, [open, target, orderId, initialInTransit, reset]);
+  }, [open, target, orderId, initialInTransit, initialCode, reset]);
 
   if (!target) return null;
   const needsTtn = target === "SHIPPED";
@@ -106,7 +108,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
 
   const ttnClean = cleanTtn(ttn);
   const invalid = isStatusInvalid({ hasOrder: !!order, needsTtn, ttnClean, needsReason, code, reason });
-  const dirty = !!ttn.trim() || !!reason.trim() || code !== null;
+  const dirty = !!ttn.trim() || !!reason.trim() || code !== (initialCode ?? null);
 
   async function submit() {
     if (!target || invalid) return;

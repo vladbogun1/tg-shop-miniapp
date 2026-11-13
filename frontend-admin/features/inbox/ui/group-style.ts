@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
-import { isRefundRow, knownType } from "../model/inbox";
+import { goingBackOf, isRefundRow, knownType } from "../model/inbox";
 import type { InboxItem, InboxType, KnownInboxType } from "../model/types";
 
 const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
@@ -80,6 +80,7 @@ interface PrimaryAction {
 
 const OPEN_ORDER: PrimaryAction = { label: "Открыть заказ", icon: ClipboardList };
 const REFUND: PrimaryAction = { label: "Вернуть деньги", icon: Undo2 };
+const GOING_BACK: PrimaryAction = { label: "Едет назад", icon: Truck };
 
 const PRIMARY: Record<KnownInboxType, PrimaryAction> = {
   PAYMENT: OPEN_ORDER,
@@ -100,6 +101,7 @@ const PRIMARY: Record<KnownInboxType, PrimaryAction> = {
 /** Main action of a row; a kind the UI does not know yet opens its order (if it has one). */
 export function primaryOf(item: InboxItem): PrimaryAction {
   if (isRefundRow(item)) return REFUND;
+  if (goingBackOf(item)) return GOING_BACK;
   const known = knownType(item.type);
   return known ? PRIMARY[known] : OPEN_ORDER;
 }

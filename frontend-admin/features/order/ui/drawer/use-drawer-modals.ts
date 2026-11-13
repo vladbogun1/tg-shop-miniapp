@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UserCardDto } from "@/features/customer";
 import type { OrderStatus } from "@shop/core/types";
+import type { RejectReasonCode } from "../../model/status";
 
 export type ModalName =
   "pay" | "gift" | "case" | "discount" | "tracking" | "delivery" | "return" | "exchange" | "merge" | "received" | "archive" | "more";
@@ -31,7 +32,10 @@ export type TabName = "details" | "chat" | "history";
 export function useDrawerModals(orderId: string | null, initialTab: "details" | "chat") {
   const [open, setOpen] = useState(CLOSED);
   const [tab, setTab] = useState<TabName>(initialTab);
-  const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
+  // The status change waiting for its window; `back` — «Едет назад» from «Внимание»: reason and «в пути» ticked.
+  const [pending, setPending] = useState<{ target: OrderStatus; back: RejectReasonCode | null } | null>(null);
+  const setPendingTarget = useCallback((target: OrderStatus | null) => setPending(target ? { target, back: null } : null), []);
+  const requestBack = useCallback((code: RejectReasonCode) => setPending({ target: "REJECTED", back: code }), []);
   const [profile, setProfile] = useState<UserCardDto | null>(null);
 
   const show = useCallback((name: ModalName) => setOpen((o) => ({ ...o, [name]: true })), []);
@@ -47,7 +51,7 @@ export function useDrawerModals(orderId: string | null, initialTab: "details" | 
       for (const name of RESET_ON_ORDER) next[name] = false;
       return next;
     });
-  }, [orderId, initialTab]);
+  }, [orderId, initialTab, setPendingTarget]);
 
   return {
     open,
@@ -55,8 +59,10 @@ export function useDrawerModals(orderId: string | null, initialTab: "details" | 
     hide,
     tab,
     setTab,
-    pendingTarget,
+    pendingTarget: pending?.target ?? null,
+    pendingBack: pending?.back ?? null,
     setPendingTarget,
+    requestBack,
     profile,
     setProfile,
   };

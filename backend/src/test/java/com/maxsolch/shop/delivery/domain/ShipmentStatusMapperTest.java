@@ -18,15 +18,10 @@ class ShipmentStatusMapperTest {
             "4,IN_TRANSIT", "41,IN_TRANSIT", "5,IN_TRANSIT", "6,IN_TRANSIT", "101,IN_TRANSIT", "104,IN_TRANSIT",
             "7,ARRIVED", "8,ARRIVED",
             "9,RECEIVED", "10,RECEIVED", "11,RECEIVED", "106,RECEIVED",
-            "103,REFUSED",
-            "102,RETURNING", "105,RETURNING", "108,RETURNING",
+            "103,REFUSED", "108,REFUSED",
+            "102,RETURNING", "105,RETURNING",
     })
     void knownCodes(String code, ShipmentStage stage) {
-        if ("108".equals(code)) {
-            // Not in the table: an unknown code keeps whatever stage the parcel had.
-            assertThat(ShipmentStatusMapper.stageOf(code)).isNull();
-            return;
-        }
         assertThat(ShipmentStatusMapper.stageOf(code)).isEqualTo(stage);
     }
 

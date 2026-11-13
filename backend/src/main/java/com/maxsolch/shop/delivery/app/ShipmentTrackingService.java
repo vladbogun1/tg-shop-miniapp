@@ -12,6 +12,7 @@ import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -24,10 +25,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Keeps {@code order_shipments} in step with Nova Poshta by polling ({@code TrackingDocument.getStatusDocuments} in
@@ -44,6 +48,8 @@ public class ShipmentTrackingService {
     static final Duration MIN_INTERVAL = Duration.ofMinutes(20);
     /** Shipments older than this are not polled any more (setting novaposhta.trackingMaxDays). */
     static final int DEFAULT_MAX_DAYS = 60;
+    /** A picked-up parcel whose order still waits is asked about again for this long (money, phone). */
+    static final Duration RECHECK_RECEIVED = Duration.ofDays(2);
 
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;
@@ -77,9 +83,10 @@ public class ShipmentTrackingService {
             return 0;
         }
         Instant now = clock.instant();
-        List<OrderShipment> due = shipments.findDueForPoll(
+        List<OrderShipment> due = new ArrayList<>(shipments.findDueForPoll(
                 List.of(ShipmentStage.RECEIVED.name(), ShipmentStage.CANCELLED.name()),
-                now.minus(MIN_INTERVAL), now.minus(maxAge()), PageRequest.of(0, 1000));
+                now.minus(MIN_INTERVAL), now.minus(maxAge()), PageRequest.of(0, 1000)));
+        due.addAll(recheckReceived(now));
         int failed = 0;
         String lastError = "";
         for (int i = 0; i < due.size(); i += BATCH) {
@@ -99,6 +106,23 @@ public class ShipmentTrackingService {
         }
         remindStorage(now);
         return due.size();
+    }
+
+    /**
+     * Picked up lately while the order is still SHIPPED: the webhook moved the stage, but the order waits for what
+     * only the poll shows — all the money collected («Контроль оплати»), our recipient's phone (a typed-in number).
+     */
+    List<OrderShipment> recheckReceived(Instant now) {
+        List<OrderShipment> rows = shipments.findReceivedSince(ShipmentStage.RECEIVED.name(),
+                now.minus(RECHECK_RECEIVED), now.minus(MIN_INTERVAL), PageRequest.of(0, 200));
+        if (rows.isEmpty()) {
+            return rows;
+        }
+        Set<String> waiting = orders.findAll(rows.stream().map(OrderShipment::getOrderId).toList()).stream()
+                .filter(o -> o.status() == OrderStatus.SHIPPED)
+                .map(o -> UuidUtil.toString(o.id()))
+                .collect(Collectors.toSet());
+        return rows.stream().filter(s -> waiting.contains(UuidUtil.toString(s.getOrderId()))).toList();
     }
 
     /** How long a waybill is polled at all (setting, 60 days by default). */
@@ -192,9 +216,19 @@ public class ShipmentTrackingService {
         if (storage == null) {
             storage = date(NpJson.text(n, "DatePayedKeeping"));
         }
-        return new StatusUpdate(NpJson.text(n, "StatusCode"), NpJson.text(n, "Status"),
+        return new StatusUpdate(NpJson.text(n, "StatusCode"), statusText(n),
                 date(NpJson.text(n, "ScheduledDeliveryDate")), storage, returnTtn, null,
-                NpJson.text(n, "PhoneRecipient"), NpMeasure.of(n));
+                NpJson.text(n, "PhoneRecipient"), NpMeasure.of(n), NpMeasure.minor(n, "AfterpaymentOnGoodsCost"));
+    }
+
+    /** «Відмова від отримання · Одержувач не з'явився до відділення»: why it was not delivered, when NP says. */
+    static String statusText(JsonNode n) {
+        String status = NpJson.text(n, "Status");
+        String why = NpJson.trimmed(n, "UndeliveryReasons");
+        if (why == null || status == null || status.contains(why)) {
+            return status;
+        }
+        return status.isBlank() ? why : status.trim() + " · " + why;
     }
 
     static LocalDate date(String raw) {

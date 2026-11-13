@@ -46,7 +46,7 @@ export function DrawerModals({
   restockUnits,
   refreshLists,
 }: Props) {
-  const { open, hide, pendingTarget, setPendingTarget, profile, setProfile } = modals;
+  const { open, hide, pendingTarget, pendingBack, setPendingTarget, profile, setProfile } = modals;
   const o = order ?? null;
   return (
     <>
@@ -81,6 +81,8 @@ export function DrawerModals({
             : null
         }
         loading={!!pendingTarget && busyKey === `status:${pendingTarget}`}
+        initialInTransit={pendingBack !== null}
+        initialCode={pendingBack ?? undefined}
         onClose={() => setPendingTarget(null)}
         onConfirm={actions.applyStatus}
       />

@@ -29,6 +29,17 @@ public interface OrderShipmentRepository extends JpaRepository<OrderShipment, by
                                        @Param("since") Instant since,
                                        Pageable page);
 
+    /**
+     * Picked up after {@code since} and not polled since {@code before}: one more look — a webhook «received» carries
+     * neither what NP collected nor the recipient's phone of a typed-in number.
+     */
+    @Query("select s from OrderShipment s where s.active = true and s.stage = :stage and s.receivedAt > :since "
+            + "and (s.lastPolledAt is null or s.lastPolledAt < :before) order by s.lastPolledAt asc nulls first")
+    List<OrderShipment> findReceivedSince(@Param("stage") String stage,
+                                          @Param("since") Instant since,
+                                          @Param("before") Instant before,
+                                          Pageable page);
+
     /** Rows of the «Внимание → Посылки» group. */
     @Query("select s from OrderShipment s where s.active = true and s.stage in :stages")
     List<OrderShipment> findActiveInStages(@Param("stages") Collection<String> stages);

@@ -199,6 +199,10 @@ public class OrderShipment {
     @Column(name = "np_measured_at")
     private Instant npMeasuredAt;
 
+    /** What NP collected through «Контроль оплати» at pickup (V102); null = not known yet. */
+    @Column(name = "np_collected_minor")
+    private Long npCollectedMinor;
+
     /** Poll and webhook may apply a status at once: the second one retries on fresh data. */
     @jakarta.persistence.Version
     @Column(name = "version", nullable = false)
@@ -255,5 +259,19 @@ public class OrderShipment {
     /** Whether this waybill collects money: the stored flag, or (older rows) a non-zero COD. */
     public boolean collects() {
         return collectCod != null ? collectCod : codMinor > 0;
+    }
+
+    /**
+     * Whether a pickup NP reported with {@code reportedMinor} collected may close the order by itself: the waybill
+     * collects nothing, or NP collected all of it. Unknown (a webhook, an absent or zero field) or less — a partial
+     * pickup (#1c60c7c7, 13.11.2026) — waits for the admin: a wrong hold costs one tap, a wrong close costs money.
+     */
+    public boolean pickupSettles(Long reportedMinor) {
+        return !collects() || codMinor <= 0 || (reportedMinor != null && reportedMinor >= codMinor);
+    }
+
+    /** NP reported less collected at pickup than the waybill asked for («частичный выкуп»). */
+    public boolean partlyCollected() {
+        return collects() && codMinor > 0 && npCollectedMinor != null && npCollectedMinor < codMinor;
     }
 }
