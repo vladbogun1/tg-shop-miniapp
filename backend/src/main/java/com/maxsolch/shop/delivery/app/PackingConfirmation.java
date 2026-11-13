@@ -126,7 +126,8 @@ public class PackingConfirmation {
         ShippingOrder order = orders.find(id).orElseThrow(NpErrors::orderNotFound);
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(id).orElse(null);
         Measured m = measure(order, serviceOf(s, order), c, req.weightG());
-        if (s != null && !(OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s))) {
+        if (s != null && (!(OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s))
+                || sameParcel(s, m.lengthMm(), m.widthMm(), m.heightMm(), m.weightG()))) {
             return new PackingCommands.Check(List.of(), List.of());  // only recorded, nothing goes to NP
         }
         Options o = s == null ? firstWaybill(m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm())

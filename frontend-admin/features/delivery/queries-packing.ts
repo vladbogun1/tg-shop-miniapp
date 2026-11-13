@@ -84,8 +84,12 @@ export function usePackCheck(orderId: string, bodyJson: string | null) {
     staleTime: QUERY_PRESETS.live.staleTime,
     placeholderData: keepPreviousData,
     retry: false,
+    // Пока есть проблемы — перепроверяем: их правят в «Изменить» заказа (или главный админ), а не в этом выборе.
+    refetchInterval: (q) => ((q.state.data?.problems.length ?? 0) > 0 ? PACK_RECHECK_MS : false),
   });
 }
+
+const PACK_RECHECK_MS = 8_000;
 
 export const JOURNAL_DAYS = 30;
 

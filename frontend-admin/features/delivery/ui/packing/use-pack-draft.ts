@@ -26,8 +26,11 @@ export function usePackDraft(orderId: string) {
   // Читаем после монтирования: первый рендер совпадает с серверным.
   useEffect(() => {
     const saved = store.getJson<Draft>(orderId);
-    if (!saved) return;
-    setDraft({ picked: isChoice(saved.picked) ? saved.picked : null, weight: typeof saved.weight === "string" ? saved.weight : "" });
+    const picked = saved?.picked;
+    setDraft({
+      picked: isChoice(picked) ? picked : null,
+      weight: typeof saved?.weight === "string" ? saved.weight : "",
+    });
   }, [orderId]);
 
   const update = useCallback(

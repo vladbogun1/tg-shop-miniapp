@@ -5,7 +5,7 @@
 import type { AdminDispatchOrder } from "@/features/order";
 
 type BatchOrder = Pick<AdminDispatchOrder, "id" | "deliveryMethod" | "shipmentStage" | "shipmentOrigin" | "shipmentStaleReasons"> & {
-  shipmentPacking?: { unconfirmed: boolean } | null;
+  shipmentPacking?: { unconfirmed: boolean; waiting?: string | null } | null;
 };
 
 export function isNovaPoshta(o: Pick<AdminDispatchOrder, "deliveryMethod">): boolean {
@@ -21,9 +21,9 @@ export function isPrintable(o: BatchOrder): boolean {
   return o.shipmentOrigin === "API" && !!o.shipmentStage && o.shipmentStage !== "CANCELLED" && !isStale(o);
 }
 
-/** ТТН ждёт «Упаковано»: коробка не подтверждена, НП посылку ещё не приняла. */
+/** ТТН ждёт «Упаковано»: коробка не подтверждена, НП посылку ещё не приняла (ждущий оплату — ещё не паковать). */
 export function isUnconfirmed(o: BatchOrder): boolean {
-  return !!o.shipmentPacking?.unconfirmed;
+  return !!o.shipmentPacking?.unconfirmed && !o.shipmentPacking.waiting;
 }
 
 export interface BatchScope<T extends BatchOrder> {
