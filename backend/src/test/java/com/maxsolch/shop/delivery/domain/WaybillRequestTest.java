@@ -110,6 +110,7 @@ class WaybillRequestTest {
         assertThat(p.get("CargoType").asText()).isEqualTo("Documents");
         assertThat(p.get("Weight").asText()).isEqualTo("0.5");
         assertThat(p.has("OptionsSeat")).isFalse();
+        assertThat(p.has("VolumeGeneral")).as("NP: «VolumeWeight must be empty» for documents").isFalse();
         assertThat(List.of(60, 100, 101, 500, 501, 1000).stream()
                 .map(g -> WaybillRequest.weight(new Parcel(g, 200, 150, 10, "test").withDocuments(true))))
                 .containsExactly("0.1", "0.1", "0.5", "0.5", "1", "1");

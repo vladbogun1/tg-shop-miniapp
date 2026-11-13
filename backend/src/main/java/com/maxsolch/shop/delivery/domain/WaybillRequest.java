@@ -51,7 +51,10 @@ public final class WaybillRequest {
         p.put("ServiceType", s.serviceType());
         p.put("SeatsAmount", String.valueOf(s.parcel().seats().size()));
         p.put("Weight", weight(s.parcel()));
-        p.put("VolumeGeneral", m3(s.parcel()));
+        if (!s.parcel().documents()) {
+            // «Документи» have no volume for NP: it refuses one («VolumeWeight must be empty», order #5183559b).
+            p.put("VolumeGeneral", m3(s.parcel()));
+        }
         p.put("Description", s.description() == null || s.description().isBlank() ? "Товари" : s.description().trim());
         // The declared value is at least what NP collects: «Контроль оплати» cannot exceed it.
         p.put("Cost", uahCeil(Math.max(s.declaredMinor(), s.codMinor())));
