@@ -2,7 +2,8 @@
 
 /**
  * «Нова пошта · ТТН» в карточке заказа.
- *  - ТТН нет: «Создать ТТН» (окно с живым предпросмотром) для NEW / APPROVED.
+ *  - ТТН нет: «Пакуй в» + «Упаковано — создать ТТН» (одобренный заказ НП); главному админу ещё «Создать ТТН
+ *    вручную» (окно с живым предпросмотром) для NEW / APPROVED.
  *  - ТТН есть: номер (копировать), стадия, текст НП, ссылка на отслеживание, когда опрашивали (или почему
  *    не вышло), «Оновити статус», «Печать этикетки», а пока НП не сканировала посылку и ТТН наша —
  *    «Изменить ТТН» / «Отменить ТТН».
@@ -13,6 +14,7 @@
  * (как OnlinePaymentBlock).
  */
 import { useState } from "react";
+import { useIsSuperAdmin } from "@/features/staff";
 import { ExternalLink, Pencil, RefreshCw, Trash2, Truck } from "lucide-react";
 import { useConfirm } from "@shop/ui/confirm";
 import { Button } from "@shop/ui/admin-button";
@@ -21,11 +23,12 @@ import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { serviceLabel, shipmentEditable } from "../model/labels";
 import type { ShipmentMode } from "../model/shipment-form";
-import type { Shipment } from "../model/types";
+import type { Packing, Shipment } from "../model/types";
 import { useCancelShipment, useRefreshShipment } from "../queries";
 import { LabelPrint } from "./LabelPrint";
 import { ShipmentFacts } from "./ShipmentFacts";
 import { UNCONFIRMED_PRINT } from "../model/packing";
+import { PackBox } from "./packing/PackBox";
 import { ShipmentPacking } from "./packing/ShipmentPacking";
 import { ShipmentStageBadge } from "./parts";
 import { StaleBanner, StaleDialog } from "./StaleShipment";
@@ -40,6 +43,8 @@ export interface ShipmentOrder {
   deliveryMethod?: string | null;
   npServiceType?: string | null;
   shipment?: Shipment | null;
+  /** Одобренный заказ НП без ТТН: во что паковать («Упаковано» создаст ТТН). */
+  toPack?: Packing | null;
 }
 
 function StatusHint({ s, st, open }: { s: Shipment; st: StaleState; open: boolean }) {
@@ -186,6 +191,7 @@ export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onCh
   const [modal, setModal] = useState<ShipmentMode | null>(null);
   const s = order.shipment ?? null;
   const refresh = useRefreshShipment(order.id, onChanged);
+  const isSuper = useIsSuperAdmin() === true;
   if (order.deliveryMethod !== "NOVA_POSHTA") return null;
   const canCreate = !s && (order.status === "NEW" || order.status === "APPROVED");
   const service = serviceLabel(order.npServiceType);
@@ -203,14 +209,15 @@ export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onCh
       {s ? (
         <ShipmentView order={order} s={s} modalOpen={modal !== null} onModal={setModal} onChanged={onChanged} />
       ) : (
-        <div className="flex flex-col items-start gap-2.5">
+        <div className="flex flex-col items-stretch gap-2.5">
           <p className="text-[13px] leading-snug text-[var(--text-muted)]">
             {service ? `${service} · ` : ""}
-            ТТН ещё нет. После «Создать ТТН» заказ останется «Одобрен», пока Новая Почта не примет посылку.
+            {order.toPack ? "ТТН ещё нет: она создастся после «Упаковано» — под выбранную коробку." : "ТТН ещё нет."}
           </p>
-          {canCreate && (
-            <Button size="sm" variant="accent" icon={<Truck className="h-4 w-4" />} onClick={() => setModal("create")}>
-              Создать ТТН
+          {order.toPack && <PackBox orderId={order.id} packing={order.toPack} ttn={null} onDone={onChanged} postomat={order.npServiceType === "POSTOMAT"} />}
+          {canCreate && isSuper && (
+            <Button size="sm" variant="ghost" className="self-start" icon={<Truck className="h-4 w-4" />} onClick={() => setModal("create")}>
+              Создать ТТН вручную
             </Button>
           )}
         </div>

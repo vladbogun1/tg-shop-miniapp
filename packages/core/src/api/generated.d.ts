@@ -2374,7 +2374,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** «Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); 409 NP_BOX_NO_TTN without a waybill */
+        /** «Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); without a waybill it is made now — ttnCreated */
         post: operations["AdminPackingController_confirmBox"];
         delete?: never;
         options?: never;
@@ -3060,7 +3060,7 @@ export interface paths {
         get?: never;
         /** Change the waybill (weight, box, value, sender branch) before NP accepts the parcel */
         put: operations["AdminShipmentController_update"];
-        /** Create the waybill at Nova Poshta (the order stays until NP accepts the parcel) */
+        /** Create the waybill by hand, main admin only (the packers make it with «Упаковано») */
         post: operations["AdminShipmentController_create"];
         /** Cancel the waybill (deleted at NP; a typed-in one is only forgotten) */
         delete: operations["AdminShipmentController_cancel"];
@@ -3990,7 +3990,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** «Створити ТТН для всіх»: a waybill with defaults for each order */
+        /** «Створити ТТН для всіх»: a waybill with defaults for each order, main admin only */
         post: operations["AdminShipmentController_batch"];
         delete?: never;
         options?: never;
@@ -7882,6 +7882,7 @@ export interface components {
         };
         Confirmed: {
             shipment: components["schemas"]["ShipmentBrief"];
+            ttnCreated: boolean;
             ttnNumberChanged: boolean;
             ttnUpdated: boolean;
         };
@@ -9824,6 +9825,7 @@ export interface components {
             /** Format: int64 */
             tgUserId: number | null;
             tgUsername: string | null;
+            toPack: components["schemas"]["Packing"] | null;
             topUpNotified: boolean;
             /** Format: int64 */
             totalMinor: number;

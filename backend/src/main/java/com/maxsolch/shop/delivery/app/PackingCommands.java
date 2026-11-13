@@ -30,6 +30,6 @@ public final class PackingCommands {
      *                         or the number was typed in — only recorded)
      * @param ttnNumberChanged the label was printed, so NP made a new waybill: print the new label
      */
-    public record Confirmed(ShipmentBrief shipment, boolean ttnUpdated, boolean ttnNumberChanged) {
+    public record Confirmed(ShipmentBrief shipment, boolean ttnUpdated, boolean ttnCreated, boolean ttnNumberChanged) {
     }
 }

@@ -35,7 +35,8 @@ import java.util.Objects;
  *   <li>our waybill NP has no parcel for yet — changed to this box through the usual update ({@link ShipmentEditing});
  *       a printed one is deleted and made again, so its number changes ({@link Confirmed#ttnNumberChanged()});</li>
  *   <li>NP already has the parcel, or the number was typed in — nothing is sent, the box is only recorded;</li>
- *   <li>no waybill yet — refused (409 {@code NP_BOX_NO_TTN}): the box is confirmed against a waybill.</li>
+ *   <li>no waybill yet — it is made now with this box and weight ({@link ShipmentCreation}): the waybill (and its
+ *       label) comes after the packing, never before (v3.67.0; approving no longer makes one).</li>
  * </ul>
  * Always: the box is written on the waybill row and the packing memory learns it for these goods.
  */
@@ -50,6 +51,7 @@ public class PackingConfirmation {
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;
     private final ShipmentEditing editing;
+    private final ShipmentCreation creation;
     private final ShipmentStore store;
     private final NpBoxCatalog catalog;
     private final ParcelSizeService parcels;
@@ -61,13 +63,14 @@ public class PackingConfirmation {
     private final Clock clock;
 
     PackingConfirmation(ShipmentLocks locks, OrderShipmentRepository shipments, ShipmentOrders orders,
-                        ShipmentEditing editing, ShipmentStore store, NpBoxCatalog catalog, ParcelSizeService parcels,
+                        ShipmentEditing editing, ShipmentCreation creation, ShipmentStore store, NpBoxCatalog catalog, ParcelSizeService parcels,
                         PackingMemoryStore memory, CurrentActor actor, AdminDirectory admins,
                         AdminAuditService audit, PostomatCells postomats, Clock clock) {
         this.locks = locks;
         this.shipments = shipments;
         this.orders = orders;
         this.editing = editing;
+        this.creation = creation;
         this.store = store;
         this.catalog = catalog;
         this.parcels = parcels;
@@ -93,30 +96,40 @@ public class PackingConfirmation {
         }
         Confirmed done = locks.withOrder(id, () -> confirmLocked(id, c, weight));
         audit.record("NP_BOX_CONFIRM", "ORDER", orderId, "Коробка «" + done.shipment().packing().boxLabel() + "»"
+                + (done.ttnCreated() ? ", ТТН создана " + done.shipment().ttn() : "")
                 + (done.ttnNumberChanged() ? ", новая ТТН " + done.shipment().ttn() : ""));
         return done;
     }
 
     private Confirmed confirmLocked(byte[] orderId, Choice c, Integer weightG) {
         ShippingOrder order = orders.find(orderId).orElseThrow(NpErrors::orderNotFound);
-        OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId)
-                .orElseThrow(() -> new DomainException.Conflict(DeliveryError.NP_BOX_NO_TTN));
-        String confirmedBefore = s.getBoxConfirmedAt() != null ? s.getBoxLabel() : null;
+        OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId).orElse(null);
+        String confirmedBefore = s != null && s.getBoxConfirmedAt() != null ? s.getBoxLabel() : null;
+        String service = s != null ? s.getServiceType() : order.serviceType() == null ? null : order.serviceType().name();
         List<Unit> units = parcels.units(order);
         int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
         int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
-        int[] cell = c.box() != null && c.box().bag() ? postomats.cell(s, order) : null;
+        int[] cell = c.box() != null && c.box().bag() ? postomats.cell(service, order) : null;
         int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
         int length = folded == null ? c.lengthMm() : folded[0];
         int width = folded == null ? c.widthMm() : folded[1];
         OrderShipment target = s;
         boolean updated = false;
-        if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)
+        if (s == null && ShipmentManualSync.typed(order) != null) {
+            // A number typed by hand is not tracked yet (its row comes after commit): never make a second waybill.
+            throw new DomainException.Conflict(DeliveryError.NP_BOX_NO_TTN,
+                    "У заказа номер ТТН, введённый вручную, — обновите страницу через пару секунд");
+        }
+        if (s == null) {
+            // Packed first, the waybill now: its box and weight are what is really in hand.
+            target = creation.createHeld(orderId, firstWaybill(weight, length, width, height));
+        } else if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)
                 && !sameParcel(s, length, width, height, weight)) {
             target = editing.updateHeld(orderId, options(s, weight, length, width, height));
             updated = true;
         }
-        boolean numberChanged = !s.getTtn().equals(target.getTtn());
+        boolean created = s == null;
+        boolean numberChanged = !created && !s.getTtn().equals(target.getTtn());
         NpBox box = c.box() != null ? c.box()
                 : c.saveAsBox() ? catalog.saveOwn(ownName(c, height), c.lengthMm(), c.widthMm(), height) : null;
         String label = (box != null ? BoxOptions.option(box, height).label() : customLabel(c.name(), c.lengthMm(),
@@ -135,21 +148,27 @@ public class PackingConfirmation {
         });
         if (label.equals(confirmedBefore)) {
             // Confirmed again (a double tap, the weight added later): the goods taught us this box once already.
-            return done(target, order, updated, numberChanged, label);
+            return done(target, order, updated, created, numberChanged, label);
         }
         String key = boxId != null ? PackingMemoryEntry.boxKey(UuidUtil.toString(boxId), height)
                 : PackingMemoryEntry.customKey(c.lengthMm(), c.widthMm(), height);
         memory.remember(new PackingMemoryEntry(ShipmentFacts.goodsKey(order), key, boxId, c.lengthMm(), c.widthMm(),
                 height, 1, now), now);
-        return done(target, order, updated, numberChanged, label);
+        return done(target, order, updated, created, numberChanged, label);
     }
 
-    private Confirmed done(OrderShipment target, ShippingOrder order, boolean updated, boolean numberChanged,
-                           String label) {
+    private Confirmed done(OrderShipment target, ShippingOrder order, boolean updated, boolean created,
+                           boolean numberChanged, String label) {
         log.info("Box «{}» confirmed for order {} (waybill {}{})", label, order.shortId(), target.getTtn(),
-                updated ? ", updated at NP" : "");
+                created ? ", made now" : updated ? ", updated at NP" : "");
         OrderShipment fresh = shipments.findById(target.getId()).orElse(target);
-        return new Confirmed(ShipmentFacts.brief(fresh, order), updated, numberChanged);
+        return new Confirmed(ShipmentFacts.brief(fresh, order), updated, created, numberChanged);
+    }
+
+    /** The first waybill of a packed parcel: this box and weight, everything else from the order and settings. */
+    static Options firstWaybill(int weightG, int lengthMm, int widthMm, int heightMm) {
+        return new Options(null, weightG, lengthMm, widthMm, heightMm, null, null, null, null, null, null, null,
+                false, null);
     }
 
     /**

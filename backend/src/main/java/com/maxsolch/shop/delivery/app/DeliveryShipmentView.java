@@ -6,6 +6,8 @@ import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.OrderShipmentView;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The waybills of orders for the order screens and rules ({@link OrderShipmentView}): the newest active one per order;
@@ -56,6 +60,29 @@ public class DeliveryShipmentView implements OrderShipmentView {
         Map<String, ShipmentBrief> out = new HashMap<>();
         newest.forEach((id, s) -> out.put(id, ShipmentFacts.brief(s, byId.get(id),
                 s.getGoodsKey() == null ? null : hints.get(s.getGoodsKey()))));
+        return out;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, OrderShipmentView.Packing> toPack(Collection<byte[]> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return Map.of();
+        }
+        Set<String> withWaybill = shipments.findByOrderIdInAndActiveTrue(orderIds).stream()
+                .map(s -> UuidUtil.toString(s.getOrderId())).collect(Collectors.toSet());
+        List<byte[]> open = orderIds.stream().filter(id -> !withWaybill.contains(UuidUtil.toString(id))).toList();
+        Map<String, OrderShipmentView.Packing> out = new HashMap<>();
+        if (open.isEmpty()) {
+            return out;
+        }
+        // A few approved orders wait for packing at a time: the suggestion of each, as «Створити ТТН» would make it.
+        for (ShippingOrder o : orders.findAll(open)) {
+            if (o.status() == OrderStatus.APPROVED && o.deliveryMethod() == DeliveryMethod.NOVA_POSHTA
+                    && !o.archived() && ShipmentManualSync.typed(o) == null) {
+                out.put(UuidUtil.toString(o.id()), ShipmentFacts.toPack(suggestions.forOrder(o)));
+            }
+        }
         return out;
     }
 }

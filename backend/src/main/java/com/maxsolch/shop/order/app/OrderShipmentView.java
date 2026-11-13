@@ -26,6 +26,16 @@ public interface OrderShipmentView {
      */
     Map<String, ShipmentBrief> forOrders(Collection<byte[]> orderIds);
 
+    /**
+     * What to pack approved Nova Poshta orders without a waybill into: the suggested box only ({@code unconfirmed});
+     * «Упаковано» makes the waybill with the box the packer chose (v3.67.0).
+     *
+     * @return order id → its packing; orders with a waybill, not approved, archived or not NP are absent
+     */
+    default Map<String, Packing> toPack(Collection<byte[]> orderIds) {
+        return Map.of();
+    }
+
     /** The active parcel of one order. */
     default Optional<ShipmentBrief> forOrder(byte[] orderId) {
         return forOrders(List.of(orderId)).values().stream().findFirst();

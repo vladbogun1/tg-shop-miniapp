@@ -133,7 +133,7 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
           icon={<PackageCheck className="h-4 w-4" />}
           onClick={submit}
         >
-          Упаковано
+          {ttn ? "Упаковано" : "Упаковано — создать ТТН"}
         </Button>
       </div>
       {save.isError && (

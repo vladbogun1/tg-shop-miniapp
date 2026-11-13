@@ -64,7 +64,7 @@ class ShipmentStore {
         }
         log.error("NP waybill {} of order {} exists at NP but is not saved", r.number(), p.shortId(), last);
         throw new DomainException.BadRequest(DeliveryError.NP_NOT_SAVED, "ТТН " + r.number()
-                + " создана в Новой почте, но не сохранилась в заказе — нажмите «Создать ТТН» ещё раз: найдём её "
+                + " создана в Новой почте, но не сохранилась в заказе — нажмите «Упаковано» (или «Создать ТТН») ещё раз: найдём её "
                 + "по номеру заказа, вторая не создастся");
     }
 

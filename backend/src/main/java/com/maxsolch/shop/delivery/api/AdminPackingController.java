@@ -34,7 +34,7 @@ public class AdminPackingController {
 
     @PostMapping("/shipments/{orderId}/box")
     @Operation(summary = "«Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed "
-            + "(a printed one is remade — ttnNumberChanged); 409 NP_BOX_NO_TTN without a waybill")
+            + "(a printed one is remade — ttnNumberChanged); without a waybill it is made now — ttnCreated")
     public Confirmed confirmBox(@PathVariable String orderId, @RequestBody ConfirmBox body) {
         return confirmation.confirm(orderId, body);
     }

@@ -25,7 +25,6 @@ import static com.maxsolch.shop.settings.domain.SettingDefinition.textSetting;
 public class DeliverySettings implements SettingsContribution {
 
     public static final String NOVAPOSHTA_AUTO_SYNC = "novaposhta.autoSync";
-    public static final String NP_AUTO_CREATE_TTN = "novaposhta.autoCreateTtn";
     public static final String NP_SHIP_ON_ACCEPT = "novaposhta.shipOnAccept";
     public static final String NP_TRACKING = "novaposhta.tracking";
     public static final String NP_AUTO_DELIVER = "novaposhta.autoDeliver";
@@ -78,7 +77,6 @@ public class DeliverySettings implements SettingsContribution {
             Map.entry(NP_COD_FEE_PCT, TAB_CHECKOUT),
             Map.entry(NP_COD_FEE_FIXED, TAB_CHECKOUT),
             Map.entry(NP_TARIFF_TOLERANCE_PCT, TAB_CHECKOUT),
-            Map.entry(NP_AUTO_CREATE_TTN, TAB_TTN),
             Map.entry(NP_AUTO_UPDATE_TTN, TAB_TTN),
             Map.entry(NP_CARGO_DESCRIPTION, TAB_TTN),
             Map.entry(NP_DOCUMENTS_ENABLED, TAB_TTN),
@@ -145,11 +143,6 @@ public class DeliverySettings implements SettingsContribution {
                     "Комиссия за перевод наложки — фиксированная часть",
                     "Фиксированная часть комиссии «Контроль оплати» в гривнах, добавляется к проценту выше.",
                     20, 0, 500, "₴"),
-            boolSetting(NP_AUTO_CREATE_TTN, "novaposhta",
-                    "Создавать ТТН при одобрении",
-                    "Когда заказ одобрен, ТТН создаётся сама (вес и коробка — из товаров, отделение отправки — "
-                            + "основное). Выключено — только кнопкой «Создать ТТН» в заказе или на «К отправке».",
-                    false),
             boolSetting(NP_SHIP_ON_ACCEPT, "novaposhta",
                     "«Отправлен» — когда Новая почта приняла посылку",
                     "Заказ становится «Отправлен», когда посылку приняли в отделении (до этого — «ТТН создана»). "

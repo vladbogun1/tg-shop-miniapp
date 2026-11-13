@@ -46,6 +46,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -62,6 +63,7 @@ class PackingConfirmationTest {
     private final OrderShipmentRepository shipments = mock(OrderShipmentRepository.class);
     private final ShipmentOrders orders = mock(ShipmentOrders.class);
     private final ShipmentEditing editing = mock(ShipmentEditing.class);
+    private final ShipmentCreation creation = mock(ShipmentCreation.class);
     private final ShipmentStore store = mock(ShipmentStore.class);
     private final NpBoxCatalog catalog = mock(NpBoxCatalog.class);
     private final ParcelSizeService parcels = mock(ParcelSizeService.class);
@@ -69,7 +71,7 @@ class PackingConfirmationTest {
     private final AdminAuditService audit = mock(AdminAuditService.class);
     private final PostomatCells postomats = mock(PostomatCells.class);
     private final PackingConfirmation confirmation = new PackingConfirmation(locks, shipments, orders, editing,
-            store, catalog, parcels, memory, mock(CurrentActor.class), mock(AdminDirectory.class), audit, postomats,
+            creation, store, catalog, parcels, memory, mock(CurrentActor.class), mock(AdminDirectory.class), audit, postomats,
             Clock.fixed(NOW, ZoneOffset.UTC));
 
     private final List<OrderShipment> rows = new ArrayList<>();
@@ -166,7 +168,7 @@ class PackingConfirmationTest {
     void aBagIntoAParcelLockerIsFoldedToTheCell() {
         // «Пакет НП» 55×50 cm into a 60×40×30 locker was refused as «больше 60×40×30» (#5e9f3f1a, 13.11.2026).
         NpBox bag = npBag();
-        when(postomats.cell(row, order)).thenReturn(new int[] {300, 400, 600});
+        when(postomats.cell(row.getServiceType(), order)).thenReturn(new int[] {300, 400, 600});
 
         Confirmed done = confirmation.confirm(ORDER_ID, catalogBox(bag, null));
 
@@ -298,12 +300,40 @@ class PackingConfirmationTest {
     }
 
     @Test
-    void withoutAWaybillItIsRefused() {
+    void aNumberTypedByHandWithoutItsRowYetMakesNoSecondWaybill() {
         when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> confirmation.confirm(ORDER_ID, catalogBox(np5, 80)))
                 .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(e -> assertThat(((DomainException) e).getCode()).isEqualTo(DeliveryError.NP_BOX_NO_TTN.code()));
+        verifyNoInteractions(creation);
         verify(memory, never()).remember(any(), any());
+    }
+
+    @Test
+    void withoutAWaybillPackingMakesItWithThisBox() {
+        // v3.67.0: packed first, then the waybill — its label is printed after the packing (Maxim printed labels of
+        // waybills made on approve from the NP cabinet before packing, 13.11.2026).
+        when(orders.find(ORDER)).thenReturn(Optional.of(NpFixtures.order(OrderStatus.APPROVED, false, null)));
+        when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
+        when(creation.createHeld(eq(ORDER), any())).thenAnswer(i -> {
+            // Made under the order's lock «np-ttn:<order>», which is not re-entrant.
+            assertThatThrownBy(() -> locks.withOrder(ORDER, () -> null)).isInstanceOf(DomainException.class);
+            return row;
+        });
+
+        Confirmed done = confirmation.confirm(ORDER_ID, catalogBox(np5, 80));
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(creation).createHeld(eq(ORDER), o.capture());
+        assertThat(o.getValue().lengthMm()).isEqualTo(400);
+        assertThat(o.getValue().widthMm()).isEqualTo(240);
+        assertThat(o.getValue().heightMm()).isEqualTo(80);
+        assertThat(o.getValue().documents()).isNull();
+        verify(editing, never()).updateHeld(any(), any());
+        assertThat(done.ttnCreated()).isTrue();
+        assertThat(done.ttnNumberChanged()).isFalse();
+        assertThat(row.getBoxLabel()).startsWith("Коробка 5 кг");
+        verify(memory).remember(any(), any());
     }
 
     @Test

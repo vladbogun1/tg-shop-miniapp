@@ -130,9 +130,9 @@ export interface CardNp {
   onPacked: () => void;
 }
 
-/** «Пакуй в» — у живой, не устаревшей ТТН. */
+/** «Пакуй в» — до ТТН (её создаст «Упаковано») и у живой, не устаревшей ТТН. */
 function Packing({ o, onPacked }: { o: AdminDispatchOrder; onPacked: () => void }) {
-  if (!o.shipmentPacking || !o.shipmentStage || o.shipmentStage === "CANCELLED" || isStale(o)) return null;
+  if (!o.shipmentPacking || o.shipmentStage === "CANCELLED" || isStale(o)) return null;
   return <PackBox orderId={o.id} packing={o.shipmentPacking} ttn={o.trackingNumber} onDone={onPacked} postomat={o.npServiceType === "POSTOMAT"} />;
 }
 

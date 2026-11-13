@@ -8,6 +8,7 @@ import { Check, Truck, X } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { Badge } from "@/components/ui/Badge";
 import { Chip, LabelPrint, type BatchResult, type LabelFormat, type SenderWarehouse } from "@/features/delivery";
+import { useIsSuperAdmin } from "@/features/staff";
 
 export interface BatchBarProps {
   total: number;
@@ -79,6 +80,8 @@ function PrintButtons(p: Pick<BatchBarProps, "toPrintIds" | "toPrintConfirmedIds
 
 export function BatchBar(p: BatchBarProps) {
   const all = p.selected > 0 && p.selected === p.total;
+  // ТТН создаёт «Упаковано» на карточке; пачкой без упаковки — только главный админ (сервер проверяет так же).
+  const canCreate = useIsSuperAdmin() === true;
   return (
     <section className="panel flex min-w-0 flex-col gap-3 p-3 sm:p-4" aria-label="Нова пошта: ТТН для нескольких заказов">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -91,21 +94,23 @@ export function BatchBar(p: BatchBarProps) {
       </div>
       <BranchChips branches={p.branches} branch={p.branch} onBranch={p.onBranch} />
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="accent"
-          className="max-sm:w-full pointer-coarse:min-h-11"
-          loading={p.creating}
-          disabled={p.toCreate === 0}
-          icon={<Truck className="h-4 w-4" />}
-          onClick={p.onCreate}
-        >
-          Создать ТТН для всех · {p.toCreate}
-        </Button>
+        {canCreate && (
+          <Button
+            size="sm"
+            variant="accent"
+            className="max-sm:w-full pointer-coarse:min-h-11"
+            loading={p.creating}
+            disabled={p.toCreate === 0}
+            icon={<Truck className="h-4 w-4" />}
+            onClick={p.onCreate}
+          >
+            Создать ТТН для всех · {p.toCreate}
+          </Button>
+        )}
         <PrintButtons {...p} />
       </div>
       <p className="text-[12px] leading-snug text-[var(--text-faint)]">
-        ТТН создаётся только для заказов без неё; неоплаченные онлайн пропускаются с пояснением. Этикетки — одним PDF.
+        ТТН создаётся кнопкой «Упаковано» на карточке — под ту коробку, в которой посылка уйдёт. Этикетки — одним PDF.
         {p.staleCount > 0 && ` Устаревших ТТН: ${p.staleCount} — их не печатаем, пересоздайте.`}
         {p.toPrintIds.length > p.toPrintConfirmedIds.length &&
           ` Коробка не подтверждена: ${p.toPrintIds.length - p.toPrintConfirmedIds.length} — нажмите «Упаковано» на карточке, и ТТН обновится.`}

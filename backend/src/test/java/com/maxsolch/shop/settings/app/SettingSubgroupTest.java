@@ -20,11 +20,11 @@ class SettingSubgroupTest {
     void everyNovaPoshtaSettingIsOnOneOfTheFourTabs() {
         List<SettingDefinition> np = AllSettings.catalog().all().stream()
                 .filter(d -> d.group().equals("novaposhta")).toList();
-        assertThat(np).hasSize(31);
+        assertThat(np).hasSize(30); // v3.67.0: «Создавать ТТН при одобрении» removed — «Упаковано» makes it
         assertThat(np).allSatisfy(d -> assertThat(NP_TABS).contains(d.subgroup()));
 
         Map<String, Long> perTab = np.stream().collect(Collectors.groupingBy(SettingDefinition::subgroup, Collectors.counting()));
-        assertThat(perTab).containsExactlyInAnyOrderEntriesOf(Map.of("checkout", 6L, "ttn", 6L, "boxes", 9L, "tracking", 10L));
+        assertThat(perTab).containsExactlyInAnyOrderEntriesOf(Map.of("checkout", 6L, "ttn", 5L, "boxes", 9L, "tracking", 10L));
     }
 
     @Test

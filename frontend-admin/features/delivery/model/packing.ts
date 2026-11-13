@@ -122,7 +122,11 @@ export const UNCONFIRMED_PRINT = {
 };
 
 /** Тост после «Упаковано». */
-export function confirmMessage(r: Pick<ConfirmBoxResult, "ttnUpdated" | "ttnNumberChanged"> & { shipment: { ttn: string } }, before: string | null | undefined): string {
+export function confirmMessage(
+  r: Pick<ConfirmBoxResult, "ttnUpdated" | "ttnNumberChanged"> & { ttnCreated?: boolean; shipment: { ttn: string } },
+  before: string | null | undefined,
+): string {
+  if (r.ttnCreated) return `Упаковано, ТТН №${r.shipment.ttn} создана — можно печатать этикетку`;
   if (r.ttnNumberChanged) {
     return before ? `Коробка подтверждена, ТТН №${before} заменена на №${r.shipment.ttn}` : `Коробка подтверждена, новая ТТН №${r.shipment.ttn}`;
   }

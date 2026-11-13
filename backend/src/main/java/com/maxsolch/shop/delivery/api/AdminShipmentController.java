@@ -4,6 +4,7 @@ import com.maxsolch.shop.delivery.app.ShipmentAdmin;
 import com.maxsolch.shop.delivery.app.ShipmentCommands;
 import com.maxsolch.shop.order.app.OrderShipmentView.ShipmentBrief;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,7 +62,8 @@ public class AdminShipmentController {
     }
 
     @PostMapping("/orders/{id}/shipment")
-    @Operation(summary = "Create the waybill at Nova Poshta (the order stays until NP accepts the parcel)")
+    @RequiredSuperAdmin
+    @Operation(summary = "Create the waybill by hand, main admin only (the packers make it with «Упаковано»)")
     public ShipmentBrief create(@PathVariable String id,
                                 @RequestBody(required = false) ShipmentCommands.Options options) {
         return shipments.create(id, options);
@@ -81,7 +83,8 @@ public class AdminShipmentController {
     }
 
     @PostMapping("/shipments/batch")
-    @Operation(summary = "«Створити ТТН для всіх»: a waybill with defaults for each order")
+    @RequiredSuperAdmin
+    @Operation(summary = "«Створити ТТН для всіх»: a waybill with defaults for each order, main admin only")
     public List<ShipmentCommands.BatchResult> batch(@RequestBody ShipmentBatchRequest body) {
         return shipments.createAll(body == null ? null : body.orderIds(),
                 body == null ? null : body.senderWarehouseRef());

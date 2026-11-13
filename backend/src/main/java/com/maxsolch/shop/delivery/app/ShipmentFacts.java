@@ -75,6 +75,12 @@ public final class ShipmentFacts {
                 && (stage == ShipmentStage.CREATED || stage == ShipmentStage.NOT_FOUND);
     }
 
+    /** An order to pack before its waybill: only the suggestion, nothing confirmed or printed. */
+    static OrderShipmentView.Packing toPack(BoxSuggestion.Suggested s) {
+        return new OrderShipmentView.Packing(s.label(), s.source(), null, null, null, null, null, false, true, null,
+                null, null, null, null, null);
+    }
+
     static OrderShipmentView.Packing packing(OrderShipment s, BoxSuggestion.Hint hint) {
         boolean open = unconfirmed(s);
         String suggested = open && hint != null ? hint.label() : s.getBoxSuggested();

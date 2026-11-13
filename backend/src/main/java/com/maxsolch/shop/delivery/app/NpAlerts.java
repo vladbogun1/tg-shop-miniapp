@@ -29,6 +29,7 @@ public class NpAlerts {
     public enum Kind {
         SENDER_BRANCH("Отделение отправки", true),
         POLL("Отслеживание посылок", true),
+        /** No longer raised (v3.67.0: no waybill on approve); kept so an alert stored before still reads. */
         AUTO_TTN("ТТН при одобрении", true),
         SYNC("Справочник отделений", false),
         STATUS_CODES("Новые статусы Новой почты", false),

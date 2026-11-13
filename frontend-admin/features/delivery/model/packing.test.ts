@@ -61,6 +61,7 @@ describe("«Упаковано»", () => {
     expect(confirmMessage({ ttnUpdated: true, ttnNumberChanged: true, shipment: sh }, "2044")).toBe("Коробка подтверждена, ТТН №2044 заменена на №2045");
     expect(confirmMessage({ ttnUpdated: true, ttnNumberChanged: false, shipment: sh }, "2045")).toBe("Коробка подтверждена, ТТН обновлена");
     expect(confirmMessage({ ttnUpdated: false, ttnNumberChanged: false, shipment: sh }, "2045")).toBe("Коробка записана, ТТН не менялась");
+    expect(confirmMessage({ ttnUpdated: false, ttnCreated: true, ttnNumberChanged: false, shipment: sh }, null)).toBe("Упаковано, ТТН №2045 создана — можно печатать этикетку");
   });
   it("НП приняла с кода 4", () => {
     expect(npHasParcel("1")).toBe(false);

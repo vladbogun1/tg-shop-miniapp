@@ -52,7 +52,10 @@ public record DispatchOrderDto(
         @Nullable String shipmentStatusText,
         /** Why the waybill no longer matches the order — do not send it, make it again (empty = fine). */
         List<String> shipmentStaleReasons,
-        /** The box of the active parcel: suggested / confirmed, printed, NP's re-measure (null without a waybill). */
+        /**
+         * The box of the active parcel: suggested / confirmed, printed, NP's re-measure; without a waybill — the
+         * suggestion of an approved NP order still to pack (its «Упаковано» makes the waybill), else null.
+         */
         @Nullable OrderShipmentView.Packing shipmentPacking) {
 
     /** {@code imageUrl}: the product's first photo, null when it has none or the product is gone. */

@@ -1,7 +1,6 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
-import com.maxsolch.shop.delivery.domain.OrderShipment;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.order.app.ShippingOrder;
 import com.maxsolch.shop.order.domain.NpServiceType;
@@ -20,9 +19,9 @@ class PostomatCells {
         this.settings = settings;
     }
 
-    /** The cell's sides in mm, smallest first; null when the waybill is not to a parcel locker. */
-    int[] cell(OrderShipment s, ShippingOrder order) {
-        if (!NpServiceType.POSTOMAT.name().equals(s.getServiceType())) {
+    /** The cell's sides in mm, smallest first; null when the parcel does not go to a parcel locker. */
+    int[] cell(String serviceType, ShippingOrder order) {
+        if (!NpServiceType.POSTOMAT.name().equals(serviceType)) {
             return null;
         }
         String ref = order.warehouseRef();

@@ -70,10 +70,11 @@ public class ShipmentCreation {
     /** «Створити ТТН». */
     public OrderShipment create(byte[] orderId, Options opt) {
         Options o = opt == null ? Options.defaults() : opt;
-        return locks.withOrder(orderId, () -> createLocked(orderId, o));
+        return locks.withOrder(orderId, () -> createHeld(orderId, o));
     }
 
-    private OrderShipment createLocked(byte[] orderId, Options o) {
+    /** The same, for a caller that already holds the order's lock ({@link PackingConfirmation}; not re-entrant). */
+    OrderShipment createHeld(byte[] orderId, Options o) {
         Prepared p = preparation.prepare(orderId, o);
         if (p.active() != null) {
             throw new DomainException.BadRequest(DeliveryError.NP_TTN_EXISTS, p.active().getTtn());

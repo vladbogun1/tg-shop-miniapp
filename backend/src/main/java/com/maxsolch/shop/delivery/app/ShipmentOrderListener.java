@@ -2,7 +2,6 @@ package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
-import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.jobs.Workers;
@@ -19,7 +18,8 @@ import java.util.concurrent.RejectedExecutionException;
  * the work runs on one background thread ({@code np-shipments}) in the order the events came:
  * <ul>
  *   <li>a typed-in number becomes a tracked waybill; a cleared one leaves the old as history;</li>
- *   <li>approved NP order → the waybill is made automatically (setting, off in code);</li>
+ *   <li>approved NP order → nothing: the waybill is made by «Упаковано» ({@link PackingConfirmation}), so the label
+ *       is printed after the packing (v3.67.0);</li>
  *   <li>rejected, archived, merged into another, exchanged back to the queue → our waybill NP has no parcel for is
  *       deleted there (a failure goes to «Внимание»); one NP already has is never touched;</li>
  *   <li>goods, discount, recipient or payment changed (also the merge target) → the waybill is updated at NP or
@@ -32,16 +32,14 @@ class ShipmentOrderListener {
 
     private final ShipmentOrders orders;
     private final ShipmentManualSync manual;
-    private final ShipmentBatch batch;
     private final ShipmentCancellation cancellation;
     private final ShipmentEditing editing;
     private final ExecutorService worker;
 
-    ShipmentOrderListener(ShipmentOrders orders, ShipmentManualSync manual, ShipmentBatch batch,
+    ShipmentOrderListener(ShipmentOrders orders, ShipmentManualSync manual,
                           ShipmentCancellation cancellation, ShipmentEditing editing, Workers workers) {
         this.orders = orders;
         this.manual = manual;
-        this.batch = batch;
         this.cancellation = cancellation;
         this.editing = editing;
         this.worker = workers.single("np-shipments");
@@ -57,8 +55,6 @@ class ShipmentOrderListener {
             }
             if (o.status() == OrderStatus.REJECTED) {
                 cancellation.dropForClosedOrder(e.orderId());
-            } else if (o.status() == OrderStatus.APPROVED && o.deliveryMethod() == DeliveryMethod.NOVA_POSHTA) {
-                batch.autoCreate(e.orderId());
             }
         });
     }

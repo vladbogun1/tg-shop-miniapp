@@ -128,7 +128,7 @@ public class ShipmentEditing {
             log.warn("NP waybill {} of order {} deleted, the new one failed: {}", old.getTtn(), p.shortId(),
                     e.getMessage());
             throw new DomainException.BadRequest(DeliveryError.NP_REMAKE_FAILED, "Старая ТТН " + old.getTtn()
-                    + " удалена, а новая не создалась: " + reason(e) + " — нажмите «Создать ТТН»");
+                    + " удалена, а новая не создалась: " + reason(e) + " — нажмите «Упаковано» ещё раз, ТТН создастся заново");
         }
         log.info("NP waybill {} of order {} remade as {} (the old one was printed)", old.getTtn(), p.shortId(),
                 r.number());

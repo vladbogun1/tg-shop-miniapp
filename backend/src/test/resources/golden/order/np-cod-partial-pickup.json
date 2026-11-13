@@ -106,6 +106,7 @@
     "recipientMiddleName" : null,
     "paymentOnDelivery" : false,
     "shipment" : null,
+    "toPack" : null,
     "admin" : null
   },
   "adminDetail" : {
@@ -215,6 +216,7 @@
     "recipientMiddleName" : null,
     "paymentOnDelivery" : false,
     "shipment" : null,
+    "toPack" : null,
     "admin" : {
       "archivedAt" : null,
       "archivedBy" : null,

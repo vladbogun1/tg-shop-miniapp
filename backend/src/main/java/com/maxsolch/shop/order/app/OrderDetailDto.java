@@ -96,6 +96,8 @@ public record OrderDetailDto(
         boolean paymentOnDelivery,
         /** The active Nova Poshta parcel; null until a waybill exists (the customer's copy hides the poll details). */
         @Nullable OrderShipmentView.ShipmentBrief shipment,
+        /** Admin only: an approved NP order without a waybill — the box to pack into («Упаковано» makes the TTN). */
+        @Nullable OrderShipmentView.Packing toPack,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         @Nullable AdminExtras admin) {
 

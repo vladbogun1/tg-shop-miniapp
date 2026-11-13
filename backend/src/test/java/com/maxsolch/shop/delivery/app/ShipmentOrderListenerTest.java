@@ -30,7 +30,6 @@ class ShipmentOrderListenerTest {
 
     private final ShipmentOrders orders = mock(ShipmentOrders.class);
     private final ShipmentManualSync manual = mock(ShipmentManualSync.class);
-    private final ShipmentBatch batch = mock(ShipmentBatch.class);
     private final ShipmentCancellation cancellation = mock(ShipmentCancellation.class);
     private final ShipmentEditing editing = mock(ShipmentEditing.class);
     private ShipmentOrderListener listener;
@@ -39,7 +38,7 @@ class ShipmentOrderListenerTest {
     void setUp() {
         Workers workers = mock(Workers.class);
         when(workers.single(anyString())).thenReturn(new NpFixtures.DirectExecutor());
-        listener = new ShipmentOrderListener(orders, manual, batch, cancellation, editing, workers);
+        listener = new ShipmentOrderListener(orders, manual, cancellation, editing, workers);
     }
 
     private void order(OrderStatus status, String tracking, DeliveryMethod method) {
@@ -52,22 +51,22 @@ class ShipmentOrderListenerTest {
         listener.onStatus(new OrderEvents.StatusChanged(ORDER));
         verify(manual).sync(ORDER);
         verify(cancellation).dropForClosedOrder(ORDER);
-        verifyNoInteractions(batch);
     }
 
     @Test
-    void approvedNpOrderGetsTheAutomaticWaybill() {
+    void approvedNpOrderGetsNoWaybillUntilPacked() {
+        // v3.67.0: «Упаковано» makes the waybill, so its label is printed after the packing, not on approve.
         order(OrderStatus.APPROVED, null, DeliveryMethod.NOVA_POSHTA);
         listener.onStatus(new OrderEvents.StatusChanged(ORDER));
-        verify(batch).autoCreate(ORDER);
-        verify(cancellation, never()).dropForClosedOrder(any());
+        verify(manual).sync(ORDER);
+        verifyNoInteractions(cancellation, editing);
     }
 
     @Test
     void approvedPickupOrderGetsNoWaybill() {
         order(OrderStatus.APPROVED, null, DeliveryMethod.PICKUP);
         listener.onStatus(new OrderEvents.StatusChanged(ORDER));
-        verifyNoInteractions(batch, cancellation);
+        verifyNoInteractions(cancellation);
     }
 
     @Test
@@ -75,14 +74,14 @@ class ShipmentOrderListenerTest {
         order(OrderStatus.SHIPPED, "20450000000001", DeliveryMethod.NOVA_POSHTA);
         listener.onStatus(new OrderEvents.StatusChanged(ORDER));
         verify(manual).sync(ORDER);
-        verifyNoInteractions(batch, cancellation, editing);
+        verifyNoInteractions(cancellation, editing);
     }
 
     @Test
     void aTypedTrackingNumberIsSyncedOnly() {
         listener.onEdited(OrderEvents.Edited.of(ORDER, EditKind.TRACKING, true));
         verify(manual).sync(ORDER);
-        verifyNoInteractions(editing, cancellation, batch);
+        verifyNoInteractions(editing, cancellation);
     }
 
     @ParameterizedTest
@@ -90,13 +89,13 @@ class ShipmentOrderListenerTest {
     void anEditKeepsTheWaybillInStep(EditKind kind) {
         listener.onEdited(OrderEvents.Edited.of(ORDER, kind, false));
         verify(editing).syncWithOrder(ORDER);
-        verifyNoInteractions(manual, cancellation, batch);
+        verifyNoInteractions(manual, cancellation);
     }
 
     @Test
     void aGiftCaseDoesNotTouchTheWaybill() {
         listener.onEdited(OrderEvents.Edited.of(ORDER, EditKind.GIFT_CASE, true));
-        verifyNoInteractions(editing, manual, cancellation, batch);
+        verifyNoInteractions(editing, manual, cancellation);
     }
 
     @Test

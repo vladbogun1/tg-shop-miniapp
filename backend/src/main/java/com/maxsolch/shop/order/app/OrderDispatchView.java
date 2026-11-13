@@ -49,18 +49,21 @@ public class OrderDispatchView {
         Map<String, String> photos = thumbnails.of(orders.stream().flatMap(o -> o.getItems().stream()).toList());
         Map<String, OrderShipmentView.ShipmentBrief> parcels = shipments.forOrders(
                 orders.stream().map(Order::getId).toList());
-        return orders.stream().map(o -> toDispatch(o, photos, parcels)).toList();
+        Map<String, OrderShipmentView.Packing> toPack = shipments.toPack(orders.stream()
+                .filter(o -> !parcels.containsKey(UuidUtil.toString(o.getId()))).map(Order::getId).toList());
+        return orders.stream().map(o -> toDispatch(o, photos, parcels, toPack)).toList();
     }
 
     @Transactional(readOnly = true)
     public DispatchOrderDto toDispatch(Order o) {
         Order attached = orderRepository.findById(o.getId()).orElse(o);
         return toDispatch(attached, thumbnails.of(attached.getItems()),
-                shipments.forOrders(List.of(attached.getId())));
+                shipments.forOrders(List.of(attached.getId())), shipments.toPack(List.of(attached.getId())));
     }
 
     private DispatchOrderDto toDispatch(Order o, Map<String, String> photos,
-                                        Map<String, OrderShipmentView.ShipmentBrief> parcels) {
+                                        Map<String, OrderShipmentView.ShipmentBrief> parcels,
+                                        Map<String, OrderShipmentView.Packing> toPack) {
         OrderPaymentState pay = OrderPaymentState.of(o);
         OrderShipmentView.ShipmentBrief parcel = parcels.get(UuidUtil.toString(o.getId()));
         List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
@@ -104,7 +107,7 @@ public class OrderDispatchView {
                 .shipmentOrigin(parcel == null ? null : parcel.origin())
                 .shipmentStatusText(parcel == null ? null : parcel.statusText())
                 .shipmentStaleReasons(parcel == null || parcel.staleReasons() == null ? List.of() : parcel.staleReasons())
-                .shipmentPacking(parcel == null ? null : parcel.packing())
+                .shipmentPacking(parcel == null ? toPack.get(UuidUtil.toString(o.getId())) : parcel.packing())
                 .build();
     }
 }

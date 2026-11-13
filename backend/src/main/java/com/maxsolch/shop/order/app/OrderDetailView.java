@@ -107,6 +107,7 @@ class OrderDetailView {
                 .exchanges(returnsView.exchangesOf(o.getId()))
                 .gift(gift.orderGift(o, ContentLocale.RU, false))
                 .shipment(shipments.forOrder(o.getId()).orElse(null))
+                .toPack(shipments.toPack(List.of(o.getId())).get(UuidUtil.toString(o.getId())))
                 .admin(adminExtras(o))
                 .build();
     }

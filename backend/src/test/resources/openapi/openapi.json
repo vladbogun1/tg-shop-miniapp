@@ -5852,6 +5852,9 @@
           "shipment" : {
             "$ref" : "#/components/schemas/ShipmentBrief"
           },
+          "ttnCreated" : {
+            "type" : "boolean"
+          },
           "ttnNumberChanged" : {
             "type" : "boolean"
           },
@@ -5861,6 +5864,7 @@
         },
         "required" : [
           "shipment",
+          "ttnCreated",
           "ttnNumberChanged",
           "ttnUpdated"
         ],
@@ -12296,6 +12300,14 @@
             "nullable" : true,
             "type" : "string"
           },
+          "toPack" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/Packing"
+              }
+            ],
+            "nullable" : true
+          },
           "topUpNotified" : {
             "type" : "boolean"
           },
@@ -12372,6 +12384,7 @@
           "subtotalMinor",
           "tgUserId",
           "tgUsername",
+          "toPack",
           "topUpNotified",
           "totalMinor",
           "trackingNumber",
@@ -24925,7 +24938,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "«Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); 409 NP_BOX_NO_TTN without a waybill",
+        "summary" : "«Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); without a waybill it is made now — ttnCreated",
         "tags" : [
           "Admin NP packing"
         ]
@@ -26952,7 +26965,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Create the waybill at Nova Poshta (the order stays until NP accepts the parcel)",
+        "summary" : "Create the waybill by hand, main admin only (the packers make it with «Упаковано»)",
         "tags" : [
           "Admin shipments"
         ]
@@ -29583,7 +29596,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "«Створити ТТН для всіх»: a waybill with defaults for each order",
+        "summary" : "«Створити ТТН для всіх»: a waybill with defaults for each order, main admin only",
         "tags" : [
           "Admin shipments"
         ]
