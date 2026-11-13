@@ -258,6 +258,31 @@ class LinkedParcelsTest {
         light.report(ShipmentStage.RECEIVED, "9", "Відправлення отримано", null, NOW);
         assertThat(LinkedParcelNotifier.text(light, ShipmentStage.RECEIVED)).contains("«Возврат»")
                 .doesNotContain("Посылка вернулась");
+        // «Возврат» with «едет назад» already done: the next button is «Посылка вернулась».
+        assertThat(LinkedParcelIssues.acceptHint(ParcelLink.Kind.LIGHT_RETURN, order(OrderStatus.DELIVERED, "IN_TRANSIT")))
+                .isEqualTo("отметьте в заказе «Посылка вернулась»");
+    }
+
+    @Test
+    void aReturnAfterPickupTakenStraightToStockLeavesAttention() {
+        ParcelLink light = link(ParcelLink.Kind.LIGHT_RETURN);
+        light.report(ShipmentStage.ARRIVED, "7", "Прибув у відділення", null, NOW);
+        ShippingOrder open = order(OrderStatus.DELIVERED, null);
+        when(open.lines()).thenReturn(List.of(line(0)));
+        ShippingOrder done = order(OrderStatus.DELIVERED, null);
+        when(done.lines()).thenReturn(List.of(line(1)));
+        ShippingOrder onTheWay = order(OrderStatus.DELIVERED, "IN_TRANSIT");
+        when(onTheWay.lines()).thenReturn(List.of(line(0)));
+
+        assertThat(LinkedParcelIssues.reason(light, open)).isNotNull();
+        assertThat(LinkedParcelIssues.reason(light, done)).isNull();
+        assertThat(LinkedParcelIssues.reason(light, onTheWay).text()).contains("«Посылка вернулась»");
+        ParcelLink sent = link(ParcelLink.Kind.LIGHT_RETURN);
+        assertThat(LinkedParcelIssues.reason(sent, onTheWay)).isNull();
+    }
+
+    private static ShippingOrder.Line line(int returned) {
+        return new ShippingOrder.Line("p1", null, "Коврик", null, 1, returned, 100_000, false);
     }
 
     @Test

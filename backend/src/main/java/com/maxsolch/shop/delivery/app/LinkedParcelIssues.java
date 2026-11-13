@@ -28,6 +28,7 @@ public class LinkedParcelIssues {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM");
     private static final String ACCEPTED = "RECEIVED";
+    private static final String IN_TRANSIT = "IN_TRANSIT";
 
     private final ParcelLinkRepository links;
     private final ShipmentOrders orders;
@@ -65,7 +66,7 @@ public class LinkedParcelIssues {
     }
 
     private static Reason toUs(ParcelLink l, ShippingOrder o, ShipmentStage stage) {
-        if (ACCEPTED.equals(o.returnStatus())) {
+        if (ACCEPTED.equals(o.returnStatus()) || settledLightReturn(l, o)) {
             return null;
         }
         if (stage == ShipmentStage.ARRIVED) {
@@ -77,7 +78,7 @@ public class LinkedParcelIssues {
             return new Reason("RETURN_PICKED", "Возврат забрали — " + acceptHint(l.kindEnum(), o), false);
         }
         if (l.kindEnum() == ParcelLink.Kind.LIGHT_RETURN && stage != ShipmentStage.CANCELLED
-                && o.status() == OrderStatus.DELIVERED) {
+                && o.status() == OrderStatus.DELIVERED && o.returnStatus() == null) {
             return new Reason("LIGHT_RETURN", "Покупатель отправил возврат после получения — оформите «Возврат», "
                     + "когда посылка придёт", false);
         }
@@ -89,11 +90,22 @@ public class LinkedParcelIssues {
      * back is «Посылка вернулась», which shows only after «Едет назад».
      */
     static String acceptHint(ParcelLink.Kind kind, ShippingOrder o) {
+        if (IN_TRANSIT.equals(o.returnStatus())) {
+            return "отметьте в заказе «Посылка вернулась»";
+        }
         if (kind == ParcelLink.Kind.LIGHT_RETURN || o.status() == OrderStatus.DELIVERED) {
             return "оформите в заказе «Возврат»";
         }
-        return o.returnStatus() == null ? "отметьте в заказе «Едет назад», затем «Посылка вернулась»"
-                : "отметьте в заказе «Посылка вернулась»";
+        return "отметьте в заказе «Едет назад», затем «Посылка вернулась»";
+    }
+
+    /**
+     * A return after pickup the owner already took in with «Возврат» straight to stock (no «едет назад» step): the
+     * order has returned units and no parcel on its way.
+     */
+    private static boolean settledLightReturn(ParcelLink l, ShippingOrder o) {
+        return l.kindEnum() == ParcelLink.Kind.LIGHT_RETURN && o.returnStatus() == null
+                && o.lines().stream().anyMatch(x -> x.returnedQty() > 0);
     }
 
     /** The goods travel on the redirect: picked up → close the order; refused → «Едет назад» like the parcel itself. */
