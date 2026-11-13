@@ -70,14 +70,15 @@ public class LinkedParcels {
             if (links.findByTtn(f.ttn()).isPresent()) {
                 continue;
             }
+            ParcelLink saved = new ParcelLink(s.getOrderId(), s.getId(), f.kind(), f.ttn());
             try {
-                tx.executeWithoutResult(t -> links.save(new ParcelLink(s.getOrderId(), s.getId(), f.kind(), f.ttn())));
+                tx.executeWithoutResult(t -> links.save(saved));
             } catch (DataIntegrityViolationException e) {
                 continue; // the webhook or another poll saved it first
             }
             log.info("NP: {} waybill {} linked to {}", f.kind(), f.ttn(), s.getTtn());
             if (f.kind() == ParcelLink.Kind.LIGHT_RETURN) {
-                notifier.lightReturnSent(s.getOrderId(), f.ttn());
+                notifier.lightReturnSent(saved);
             }
         }
     }

@@ -5,6 +5,7 @@ import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import com.maxsolch.shop.notification.domain.SellerTopic;
+import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +23,11 @@ public class LinkedParcelNotifier {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM");
 
     private final SellerChannel seller;
+    private final ShipmentOrders orders;
 
-    LinkedParcelNotifier(SellerChannel seller) {
+    LinkedParcelNotifier(SellerChannel seller, ShipmentOrders orders) {
         this.seller = seller;
+        this.orders = orders;
     }
 
     /** A redirected parcel waiting for the customer is the customer's business; everything else that arrives is ours. */
@@ -55,14 +58,32 @@ public class LinkedParcelNotifier {
 
     void stageReached(ParcelLink l) {
         String text = text(l, l.stageEnum());
-        if (text != null) {
+        if (text != null && stillNeeded(l)) {
             post("NP_LINK_" + l.getStage(), l.getOrderId(), text);
         }
     }
 
-    void lightReturnSent(byte[] orderId, String ttn) {
+    void lightReturnSent(ParcelLink l) {
+        if (!stillNeeded(l)) {
+            return;
+        }
+        byte[] orderId = l.getOrderId();
+        String ttn = l.getTtn();
         post("NP_LIGHT_RETURN", orderId, "↩️ <b>Покупатель отправил возврат</b>\nзаказ <b>#" + shortId(orderId)
                 + "</b> · ТТН " + ttn + "\nКогда придёт — оформите «Возврат» в заказе.");
+    }
+
+    /**
+     * Only what the order still waits for — the rule of «Внимание» ({@link LinkedParcelIssues#reason}): a return the
+     * order already accepted, a closed or archived order stay quiet (the first poll finds old returns too).
+     */
+    private boolean stillNeeded(ParcelLink l) {
+        try {
+            return orders.find(l.getOrderId()).filter(o -> !o.archived())
+                    .map(o -> LinkedParcelIssues.reason(l, o) != null).orElse(false);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private void post(String type, byte[] orderId, String text) {

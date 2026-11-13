@@ -105,7 +105,7 @@ class LinkedParcelsTest {
         assertThat(saved.getAllValues()).extracting(ParcelLink::getKind).containsExactly("RETURN", "LIGHT_RETURN");
         assertThat(saved.getAllValues().get(0).getShipmentId()).isEqualTo(ours.getId());
         assertThat(saved.getAllValues().get(0).getStage()).isEqualTo("CREATED");
-        verify(notifier).lightReturnSent(orderId, "59000000000004");
+        verify(notifier).lightReturnSent(org.mockito.ArgumentMatchers.argThat(l -> "59000000000004".equals(l.getTtn())));
 
         when(links.findByTtn("59000000000002")).thenReturn(Optional.of(link(ParcelLink.Kind.RETURN)));
         when(links.findByTtn("59000000000004")).thenReturn(Optional.of(link(ParcelLink.Kind.LIGHT_RETURN)));
@@ -117,7 +117,7 @@ class LinkedParcelsTest {
     void discoverLosingARaceIsQuiet() throws Exception {
         when(links.save(any())).thenThrow(new DataIntegrityViolationException("dup"));
         linked.discover(ours, node("{\"LightReturnNumber\":\"59000000000004\"}"));
-        verify(notifier, never()).lightReturnSent(any(), any());
+        verify(notifier, never()).lightReturnSent(any());
     }
 
     @Test
@@ -284,6 +284,27 @@ class LinkedParcelsTest {
         assertThat(ParcelLink.Kind.ofBasisType("Redirecting")).isEqualTo(ParcelLink.Kind.REDIRECT);
         assertThat(ParcelLink.Kind.ofBasisType("Utilization")).isNull();
         assertThat(ParcelLink.Kind.ofBasisType(null)).isNull();
+    }
+
+    @Test
+    void aReturnTheOrderAlreadyAcceptedStaysQuiet() {
+        // The first poll after the release finds old returns too: the sellers hear only what the order still waits for.
+        var seller = mock(com.maxsolch.shop.notification.app.SellerChannel.class);
+        var orderLookup = mock(com.maxsolch.shop.order.app.ShipmentOrders.class);
+        LinkedParcelNotifier real = new LinkedParcelNotifier(seller, orderLookup);
+        ParcelLink l = link(ParcelLink.Kind.RETURN);
+        l.report(ShipmentStage.RECEIVED, "9", "Отримано", null, java.time.Instant.parse("2026-11-13T12:00:00Z"));
+
+        ShippingOrder accepted = order(OrderStatus.SHIPPED, "RECEIVED");
+        ShippingOrder waiting = order(OrderStatus.SHIPPED, null);
+        when(orderLookup.find(orderId)).thenReturn(Optional.of(accepted));
+        real.stageReached(l);
+        real.lightReturnSent(link(ParcelLink.Kind.LIGHT_RETURN));
+        verify(seller, never()).post(any(), any(), any(), any(), any());
+
+        when(orderLookup.find(orderId)).thenReturn(Optional.of(waiting));
+        real.stageReached(l);
+        verify(seller, times(1)).post(any(), any(), any(), any(), any());
     }
 
     private ParcelLink link(ParcelLink.Kind kind) {

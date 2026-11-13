@@ -296,6 +296,7 @@ class PickupMoneyTest {
                 new TransactionTemplate(mock(PlatformTransactionManager.class)), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         s.setStage(ShipmentStage.RECEIVED.name());
+        s.setPollError("timeout");
         when(shipments.findDueForPoll(any(), any(), any(), any())).thenReturn(List.of());
         when(shipments.findReceivedSince(any(), any(), any(), any())).thenReturn(List.of(s));
         ShippingOrder delivered = order(OrderStatus.DELIVERED);
@@ -307,6 +308,7 @@ class PickupMoneyTest {
         verify(linked).discover(org.mockito.ArgumentMatchers.eq(s), any());
         assertThat(s.getLastPolledAt()).isEqualTo(NOW);
         assertThat(s.getStage()).isEqualTo(ShipmentStage.RECEIVED.name());
+        assertThat(s.getPollError()).isNull();
     }
 
     private ShippingOrder order(OrderStatus status) {

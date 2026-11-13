@@ -189,7 +189,8 @@ public class ShipmentTrackingService {
         } catch (RuntimeException e) {
             log.warn("NP tracking poll of {} waybills failed: {}", batch.size(), e.getMessage());
             String err = NpJson.cut(e.getMessage(), 500);
-            stamp(batch, err, true);
+            // A parcel picked up long ago keeps its row clean: the error shows in the alert, not in the order.
+            stamp(batch, apply ? err : null, apply);
             return err == null ? "" : err;
         }
         Map<String, JsonNode> byTtn = new HashMap<>();
@@ -211,7 +212,7 @@ public class ShipmentTrackingService {
                 if (apply) {
                     applier.apply(s.getId(), parse(n), true);
                 } else {
-                    stamp(List.of(s), null, false);
+                    seen(s);
                 }
             } catch (RuntimeException e) {
                 log.warn("NP status of waybill {} not applied: {}", s.getTtn(), e.getMessage());
@@ -241,6 +242,17 @@ public class ShipmentTrackingService {
         ObjectNode props = api.props();
         props.set("Documents", docs);
         return props;
+    }
+
+    /** NP answered about a watched row: stamped, an old NP error cleared (a «not our recipient» mark stays). */
+    private void seen(OrderShipment s) {
+        Instant now = clock.instant();
+        tx.executeWithoutResult(t -> shipments.findById(s.getId()).ifPresent(x -> {
+            x.setLastPolledAt(now);
+            if (x.getPollError() != null && !x.getPollError().startsWith(ShipmentStatusApplier.FOREIGN_PARCEL)) {
+                x.setPollError(null);
+            }
+        }));
     }
 
     private void stamp(List<OrderShipment> rows, String error, boolean setError) {
