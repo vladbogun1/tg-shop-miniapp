@@ -79,6 +79,20 @@ class BoxSuggestionTest {
     }
 
     @Test
+    void aRememberedBagIsTheGoodsWrappedInIt() {
+        NpBox bag = box("Пакет S", 490, 390, null, 12);
+        bag.setKind(NpBox.KIND_BAG);
+        when(catalog.findUsable(any())).thenReturn(Optional.of(bag));
+        when(memory.boxesFor(List.of(sig))).thenReturn(List.of(remembered(bag, 0, 2)));
+
+        Parcel p = suggestion.forOrder(order).parcel();
+
+        assertThat(p.lengthMm()).isEqualTo(400);
+        assertThat(p.widthMm()).isEqualTo(170);
+        assertThat(p.heightMm()).isEqualTo(50);
+    }
+
+    @Test
     void aDeletedBoxFallsBackToTheSizes() {
         NpBox gone = box("Удалённая", 300, 200, "100", 100);
         when(memory.boxesFor(List.of(sig))).thenReturn(List.of(remembered(gone, 100, 9)));

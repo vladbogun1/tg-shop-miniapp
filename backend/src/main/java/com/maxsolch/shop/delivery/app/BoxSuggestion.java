@@ -86,7 +86,10 @@ class BoxSuggestion {
         BoxOptions.Option o = BoxOptions.option(box, height);
         int weight = units.stream().mapToInt(Unit::weightG).sum() + o.tareG();
         String source = remembered(e.uses());
-        Seat seat = new Seat(weight, o.lengthMm(), o.widthMm(), o.heightMm(), o.label());
+        // A bag goes as the goods wrapped in it, not as the empty bag (13.11.2026: 49×39 cm → 5,73 kg by volume).
+        int[] sides = box.bag() ? BoxOptions.bagFootprint(o.lengthMm(), o.widthMm(), units)
+                : new int[] {o.lengthMm(), o.widthMm()};
+        Seat seat = new Seat(weight, sides[0], sides[1], o.heightMm(), o.label());
         Parcel p = Parcel.of(List.of(seat), "коробка «" + o.label() + "» — " + source, o.packMinor());
         return new Suggested(p, o.label(), source);
     }
