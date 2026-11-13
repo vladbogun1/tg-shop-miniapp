@@ -99,9 +99,12 @@ public class PackingConfirmation {
         List<Unit> units = parcels.units(order);
         int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
         int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
+        // A bag goes to NP as the goods wrapped in it, not as the empty bag laid flat.
+        int[] sides = c.bag() ? BoxOptions.bagFootprint(c.lengthMm(), c.widthMm(), units)
+                : new int[] {c.lengthMm(), c.widthMm()};
         int[] cell = c.bag() ? postomats.cell(service, order) : null;
-        int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
-        return new Measured(folded == null ? c.lengthMm() : folded[0], folded == null ? c.widthMm() : folded[1],
+        int[] folded = cell == null ? null : BoxOptions.foldBag(sides[0], sides[1], height, units, cell);
+        return new Measured(folded == null ? sides[0] : folded[0], folded == null ? sides[1] : folded[1],
                 height, weight, folded);
     }
 
@@ -137,7 +140,13 @@ public class PackingConfirmation {
         if (s == null && p.unpaid()) {
             problems.add(PackingCommands.unpaidReason(p.amountDueMinor()));
         }
-        return new PackingCommands.Check(problems, p.warnings());
+        List<String> warnings = new ArrayList<>(p.warnings());
+        String bulky = c.bag()
+                ? BoxOptions.bagVolumeWarning(m.lengthMm(), m.widthMm(), m.heightMm(), m.weightG()) : null;
+        if (bulky != null) {
+            warnings.add(bulky);
+        }
+        return new PackingCommands.Check(problems, warnings);
     }
 
     public Confirmed confirm(String orderId, ConfirmBox req) {

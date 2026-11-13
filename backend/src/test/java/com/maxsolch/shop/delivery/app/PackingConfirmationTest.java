@@ -169,7 +169,9 @@ class PackingConfirmationTest {
     @Test
     void aBagIntoAParcelLockerIsFoldedToTheCell() {
         // «Пакет НП» 55×50 cm into a 60×40×30 locker was refused as «больше 60×40×30» (#5e9f3f1a, 13.11.2026).
+        // A big desk mat (54×39 cm) makes the bag 55×41 cm — one side over the cell, folded to it.
         NpBox bag = npBag();
+        when(parcels.units(order)).thenReturn(List.of(new Unit(900, 540, 390, 50, true)));
         when(postomats.cell(row.getServiceType(), order)).thenReturn(new int[] {300, 400, 600});
 
         Confirmed done = confirmation.confirm(ORDER_ID, catalogBox(bag, null));
@@ -183,14 +185,17 @@ class PackingConfirmationTest {
     }
 
     @Test
-    void aBagToABranchKeepsItsSides() {
+    void aBagGoesAsTheGoodsWrappedInIt() {
+        // Not the empty bag laid flat (55×50 cm): 13.11.2026 two bags went so and NP charged 5.73 kg for 670 g.
         NpBox bag = npBag();
 
         confirmation.confirm(ORDER_ID, catalogBox(bag, null));
 
         ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
         verify(editing).updateHeld(eq(ORDER), o.capture());
-        assertThat(o.getValue().widthMm()).isEqualTo(500);
+        assertThat(o.getValue().lengthMm()).isEqualTo(400);
+        assertThat(o.getValue().widthMm()).isEqualTo(170);
+        assertThat(o.getValue().heightMm()).isEqualTo(50);
         assertThat(row.getBoxLabel()).isEqualTo("Пакет НП");
     }
 

@@ -16,6 +16,10 @@ public final class BoxOptions {
 
     public static final int BAG_MIN_MM = 10;
     public static final int BAG_MAX_MM = 120;
+    /** Room around the goods in a bag, per side pair: the soft bag is wrapped around them, not filled. */
+    public static final int BAG_MARGIN_MM = 20;
+    /** NP's volumetric divisor: cm³ / 4000 = kg, so mm³ / 4 000 000 = kg (4000 mm³ = 1 g). */
+    private static final long MM3_PER_G = 4000;
 
     private BoxOptions() {
     }
@@ -74,6 +78,55 @@ public final class BoxOptions {
             sum += u.sorted()[0];
         }
         return (int) Math.max(BAG_MIN_MM, Math.min(BAG_MAX_MM, sum));
+    }
+
+    /**
+     * What NP measures of a soft bag: the goods wrapped in it, not the empty bag laid flat. Length = the longest
+     * side of the goods, width = the longest middle side, each + {@link #BAG_MARGIN_MM}, never more than the bag.
+     * {@code {length, width}}; the bag's own sides when there are no goods to size it.
+     * «Пакет полиэтиленовый S» 49×39 cm with IEM + ear tips (order #e90378e3, 13.11.2026) went as 49×39×12 cm —
+     * 5.73 kg by volume for 670 g; the goods make 17×12×12 cm.
+     */
+    public static int[] bagFootprint(int bagLengthMm, int bagWidthMm, List<Unit> units) {
+        int l = Math.max(bagLengthMm, bagWidthMm);
+        int w = Math.min(bagLengthMm, bagWidthMm);
+        int gl = 0;
+        int gw = 0;
+        for (Unit u : units) {
+            int[] d = u.sorted();
+            gl = Math.max(gl, d[2]);
+            gw = Math.max(gw, d[1]);
+        }
+        if (gl == 0 || gw == 0) {
+            return new int[] {l, w};
+        }
+        return new int[] {Math.min(l, gl + BAG_MARGIN_MM), Math.min(w, gw + BAG_MARGIN_MM)};
+    }
+
+    /** NP's volumetric weight of these sides, g (rounded up). */
+    public static long volumeWeightG(int lengthMm, int widthMm, int heightMm) {
+        long mm3 = (long) lengthMm * widthMm * heightMm;
+        return (mm3 + MM3_PER_G - 1) / MM3_PER_G;
+    }
+
+    /**
+     * A bag NP would charge by volume far above its weight (2.5× and over 1.5 kg): the sizes are likely wrong
+     * (category defaults, not measured) — say so before the waybill is made. Null when it looks right.
+     */
+    public static String bagVolumeWarning(int lengthMm, int widthMm, int heightMm, int weightG) {
+        long vol = volumeWeightG(lengthMm, widthMm, heightMm);
+        if (vol <= Math.max(1500, 5L * Math.max(weightG, 500) / 2)) {
+            return null;
+        }
+        return "НП посчитает пакет " + cm(lengthMm) + "×" + cm(widthMm) + "×" + cm(heightMm) + " см как "
+                + kg(vol) + " кг по объёму при весе " + kg(weightG) + " кг — проверьте размеры товаров "
+                + "или выберите коробку";
+    }
+
+    /** 5733 → «5,73». */
+    private static String kg(long g) {
+        long c = (g + 5) / 10;
+        return c / 100 + "," + (c % 100 < 10 ? "0" : "") + c % 100;
     }
 
     /**

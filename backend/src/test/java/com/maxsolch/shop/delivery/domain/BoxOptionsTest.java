@@ -28,6 +28,42 @@ class BoxOptionsTest {
     private static final Unit PAD = new Unit(500, 380, 280, 4, true);
     private static final Unit GLIDES = new Unit(30, 120, 80, 10, true);
 
+
+    // 13.11.2026: two bags went to NP as the empty bag laid flat — 49×39×12 cm = 5.73 kg by volume for 670 g
+    // (IEM + ear tips, sizes from their categories) and 49×39×4 cm = 1.91 kg for 520 g (a mouse pad).
+    private static final Unit IEM = new Unit(300, 150, 100, 60, false);
+    private static final Unit EAR_TIPS = new Unit(350, 150, 100, 80, false);
+    private static final Unit PAD_DEFAULT = new Unit(500, 380, 280, 40, false);
+
+    @Test
+    void aBagIsTheGoodsWrappedInIt_notTheEmptyBag() {
+        assertThat(BoxOptions.volumeWeightG(490, 390, 120)).isEqualTo(5733);
+        assertThat(BoxOptions.volumeWeightG(490, 390, 40)).isEqualTo(1911);
+
+        List<Unit> iem = List.of(IEM, EAR_TIPS);
+        assertThat(BoxOptions.bagFootprint(490, 390, iem)).containsExactly(170, 120);
+        assertThat(BoxOptions.bagHeight(iem)).isEqualTo(120);
+        assertThat(BoxOptions.volumeWeightG(170, 120, 120)).isEqualTo(612);
+
+        assertThat(BoxOptions.bagFootprint(390, 490, List.of(PAD_DEFAULT))).containsExactly(400, 300);
+        assertThat(BoxOptions.volumeWeightG(400, 300, 40)).isEqualTo(1200);
+    }
+
+    @Test
+    void aBagFootprintNeverOutgrowsTheBag_andFallsBackToItWithoutGoods() {
+        assertThat(BoxOptions.bagFootprint(490, 390, List.of(new Unit(500, 900, 400, 3, true))))
+                .containsExactly(490, 390);
+        assertThat(BoxOptions.bagFootprint(490, 390, List.of())).containsExactly(490, 390);
+    }
+
+    @Test
+    void aBagFarBulkierThanItsWeightIsFlagged() {
+        assertThat(BoxOptions.bagVolumeWarning(490, 390, 120, 670)).contains("5,73 кг по объёму")
+                .contains("0,67 кг");
+        assertThat(BoxOptions.bagVolumeWarning(170, 120, 120, 670)).isNull();
+        assertThat(BoxOptions.bagVolumeWarning(400, 300, 40, 520)).isNull();
+        assertThat(BoxOptions.bagVolumeWarning(490, 390, 40, 520)).contains("1,91");
+    }
     static NpBox box(String code, String name, int l, int w, String heights, int tare) {
         NpBox b = new NpBox();
         b.setId(UuidUtil.randomBytes());
