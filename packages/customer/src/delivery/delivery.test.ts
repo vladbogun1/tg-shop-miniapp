@@ -2,7 +2,7 @@ import type { NpWarehouse } from "@shop/core/types";
 import { describe, expect, it } from "vitest";
 import { buildDeliveryFields, deliveryOk, draftFromOrder, findWarehouseByRef, type DeliveryDraft } from "./draft";
 import { estimateAmounts, estimateKey, estimateRequestOf } from "./estimate";
-import { courierOk, EMPTY_COURIER, recipientCustomerName, recipientLine, recipientOk, recipientOfOrder, splitFullName } from "./recipient";
+import { courierOk, EMPTY_COURIER, fixLookalikes, recipientCustomerName, recipientErrors, recipientLine, recipientOk, recipientOfOrder, splitFullName } from "./recipient";
 import { availabilityOf, availableTabs, keepsWarehouseOnTab, tabForWarehouse, tabOfOrder, warehouseFitsTab } from "./tabs";
 
 const branch = { ref: "w1", description: "Відділення №1", cityRef: "c1", cityName: "Харків", category: "BRANCH" } as NpWarehouse;
@@ -51,6 +51,16 @@ describe("получатель и курьер", () => {
   it("прізвище и ім'я от двух букв, по батькові необязательно", () => {
     expect(recipientOk(recipient)).toBe(true);
     expect(recipientOk({ ...recipient, firstName: " І " })).toBe(false);
+  });
+
+  it("латиница: двойник в кириллическом слове — не ошибка (заказ #e6e83c17), слово латиницей — ошибка", () => {
+    expect(fixLookalikes("Курзiн")).toBe("Курзін");
+    expect(fixLookalikes("Мар'янa-Kатерина")).toBe("Мар'яна-Катерина");
+    expect(recipientOk({ ...recipient, lastName: "Курзiн" })).toBe(true);
+    const e = recipientErrors({ ...recipient, lastName: "Kurzin", middleName: "Petrovych" });
+    expect(e.lastName && e.latin.lastName).toBe(true);
+    expect(e.middleName).toBe(true);
+    expect(recipientOk({ ...recipient, middleName: "Petrovych" })).toBe(false);
   });
 
   it("customerName — «Прізвище Ім'я», строка сводки — все три части", () => {

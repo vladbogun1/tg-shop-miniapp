@@ -76,6 +76,29 @@ public final class BoxOptions {
         return (int) Math.max(BAG_MIN_MM, Math.min(BAG_MAX_MM, sum));
     }
 
+    /**
+     * A soft bag folded to go into a parcel locker's cell ({@code cell}: sides in mm, smallest first): its footprint
+     * is cut down to the cell's two larger sides, when every unit still lies flat in it. {@code {length, width}}
+     * folded, or null when it already fits or the goods are too big to fold it (then it does not go in at all).
+     * «Пакет НП» 55×50 cm with keycaps into a 60×40×30 locker (order #5e9f3f1a, 13.11.2026) → 55×40.
+     */
+    public static int[] foldBag(int lengthMm, int widthMm, int heightMm, List<Unit> units, int[] cell) {
+        int l = Math.max(lengthMm, widthMm);
+        int w = Math.min(lengthMm, widthMm);
+        int fl = Math.min(l, cell[2]);
+        int fw = Math.min(w, cell[1]);
+        if ((fl == l && fw == w) || heightMm > cell[0]) {
+            return null;
+        }
+        for (Unit u : units) {
+            int[] d = u.sorted();
+            if (d[2] > fl || d[1] > fw) {
+                return null;
+            }
+        }
+        return new int[] {fl, fw};
+    }
+
     /** «Коробка 5 кг · 13 см» for a cut-down box, the plain name at full height. */
     public static String label(String name, int heightMm, boolean full) {
         return full ? name : name + " · " + cm(heightMm) + " см";

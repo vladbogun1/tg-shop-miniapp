@@ -57,12 +57,13 @@ public class PackingConfirmation {
     private final CurrentActor actor;
     private final AdminDirectory admins;
     private final AdminAuditService audit;
+    private final PostomatCells postomats;
     private final Clock clock;
 
     PackingConfirmation(ShipmentLocks locks, OrderShipmentRepository shipments, ShipmentOrders orders,
                         ShipmentEditing editing, ShipmentStore store, NpBoxCatalog catalog, ParcelSizeService parcels,
                         PackingMemoryStore memory, CurrentActor actor, AdminDirectory admins,
-                        AdminAuditService audit, Clock clock) {
+                        AdminAuditService audit, PostomatCells postomats, Clock clock) {
         this.locks = locks;
         this.shipments = shipments;
         this.orders = orders;
@@ -74,6 +75,7 @@ public class PackingConfirmation {
         this.actor = actor;
         this.admins = admins;
         this.audit = audit;
+        this.postomats = postomats;
         this.clock = clock;
     }
 
@@ -103,18 +105,23 @@ public class PackingConfirmation {
         List<Unit> units = parcels.units(order);
         int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
         int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
+        int[] cell = c.box() != null && c.box().bag() ? postomats.cell(s, order) : null;
+        int[] folded = cell == null ? null : BoxOptions.foldBag(c.lengthMm(), c.widthMm(), height, units, cell);
+        int length = folded == null ? c.lengthMm() : folded[0];
+        int width = folded == null ? c.widthMm() : folded[1];
         OrderShipment target = s;
         boolean updated = false;
         if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)
-                && !sameParcel(s, c.lengthMm(), c.widthMm(), height, weight)) {
-            target = editing.updateHeld(orderId, options(s, weight, c.lengthMm(), c.widthMm(), height));
+                && !sameParcel(s, length, width, height, weight)) {
+            target = editing.updateHeld(orderId, options(s, weight, length, width, height));
             updated = true;
         }
         boolean numberChanged = !s.getTtn().equals(target.getTtn());
         NpBox box = c.box() != null ? c.box()
                 : c.saveAsBox() ? catalog.saveOwn(ownName(c, height), c.lengthMm(), c.widthMm(), height) : null;
-        String label = box != null ? BoxOptions.option(box, height).label() : customLabel(c.name(), c.lengthMm(),
-                c.widthMm(), height);
+        String label = (box != null ? BoxOptions.option(box, height).label() : customLabel(c.name(), c.lengthMm(),
+                c.widthMm(), height))
+                + (folded == null ? "" : " · сложить до " + BoxOptions.cm(length) + "×" + BoxOptions.cm(width) + " см");
         byte[] boxId = box == null ? null : box.getId();
         Instant now = clock.instant();
         String by = actorName();

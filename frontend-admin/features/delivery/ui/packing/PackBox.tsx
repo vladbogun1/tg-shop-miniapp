@@ -8,12 +8,13 @@
  */
 import { useMemo, useState } from "react";
 import { Check, PackageCheck, Pencil } from "lucide-react";
+import { errorMessage } from "@shop/core/errors";
 import { formatShortDateTime } from "@shop/core/time";
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 import { Input } from "@/components/ui/Input";
 import { toMm, weightText } from "../../model/format";
-import { choiceByLabel, choiceLabel, confirmBody, npHasParcel, type PackChoice } from "../../model/packing";
+import { choiceByLabel, choiceLabel, confirmBody, isBagBox, npHasParcel, type PackChoice } from "../../model/packing";
 import type { NpBox, Packing } from "../../model/types";
 import { useBoxesQuery, useConfirmBox } from "../../queries-packing";
 import { BoxGlyph } from "../boxes/BoxGlyph";
@@ -54,13 +55,20 @@ function Confirmed({ p, onEdit }: { p: Packing; onEdit?: () => void }) {
   );
 }
 
+/** Пакет в поштомат: сервер сложит его до ячейки — упаковщик должен свернуть так же. */
+function BagFoldHint({ boxes, choice }: { boxes: NpBox[]; choice: PackChoice | null }) {
+  const box = choice?.kind === "box" ? boxes.find((b) => b.id === choice.boxId) : undefined;
+  if (!box || !isBagBox(box)) return null;
+  return <p className="text-[12.5px] text-[var(--text-muted)]">В поштомат: сверните пакет по товару, не шире 40 см — в ТТН уйдёт сложенный размер.</p>;
+}
+
 /** Начальный выбор: подтверждённая коробка, иначе совет сервера (если он про одну коробку из списка). */
 function initialChoice(boxes: NpBox[], p: Packing): PackChoice | null {
   if (p.boxId) return { kind: "box", boxId: p.boxId, heightMm: p.boxHeightMm };
   return choiceByLabel(boxes, p.boxSuggested);
 }
 
-function Picker({ orderId, ttn, p, onDone }: { orderId: string; ttn?: string | null; p: Packing; onDone: () => void }) {
+function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: string | null; p: Packing; postomat: boolean; onDone: () => void }) {
   const q = useBoxesQuery();
   const all = useMemo(() => q.data?.boxes ?? [], [q.data]);
   const inStock = useMemo(() => {
@@ -95,7 +103,16 @@ function Picker({ orderId, ttn, p, onDone }: { orderId: string; ttn?: string | n
           {suggested && p.boxSuggestedSource && <div className="text-[12px] text-[var(--text-faint)]">{p.boxSuggestedSource}</div>}
         </div>
       </div>
-      <PackPicker boxes={inStock} choice={choice} onChoice={setPicked} />
+      <PackPicker
+        boxes={inStock}
+        choice={choice}
+        postomat={postomat}
+        onChoice={(c) => {
+          save.reset();
+          setPicked(c);
+        }}
+      />
+      {postomat && <BagFoldHint boxes={all} choice={choice} />}
       {npHasParcel(p.statusCode) && <p className="text-[12.5px] text-[var(--text-muted)]">НП уже приняла посылку — ТТН не изменится, коробку запишем для статистики.</p>}
       <div className="flex min-w-0 flex-wrap items-end gap-2">
         <div className="w-36 min-w-0">
@@ -119,6 +136,12 @@ function Picker({ orderId, ttn, p, onDone }: { orderId: string; ttn?: string | n
           Упаковано
         </Button>
       </div>
+      {save.isError && (
+        // Ошибка остаётся под кнопкой, пока не выбрана другая коробка — видно, что не так, без поиска тостов.
+        <p role="alert" className="break-words text-[12.5px] font-semibold text-[var(--danger-ink)]">
+          {errorMessage(save.error, undefined, "Не удалось подтвердить коробку")}
+        </p>
+      )}
     </div>
   );
 }
@@ -129,6 +152,7 @@ export function PackBox({
   ttn,
   onDone,
   readOnly,
+  postomat = false,
 }: {
   orderId: string;
   packing: Packing;
@@ -138,6 +162,8 @@ export function PackBox({
   onDone: () => void;
   /** Только показать подтверждённую коробку (заказ закрыт, ТТН не наша). */
   readOnly?: boolean;
+  /** Посылка в поштомат: не влезающие в ячейку коробки выключены. */
+  postomat?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const confirmed = !!packing.boxConfirmedAt && !!packing.boxLabel;
@@ -151,6 +177,7 @@ export function PackBox({
           orderId={orderId}
           ttn={ttn}
           p={packing}
+          postomat={postomat}
           onDone={() => {
             setEditing(false);
             onDone();

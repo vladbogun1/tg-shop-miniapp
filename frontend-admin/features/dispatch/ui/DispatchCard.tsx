@@ -133,7 +133,7 @@ export interface CardNp {
 /** «Пакуй в» — у живой, не устаревшей ТТН. */
 function Packing({ o, onPacked }: { o: AdminDispatchOrder; onPacked: () => void }) {
   if (!o.shipmentPacking || !o.shipmentStage || o.shipmentStage === "CANCELLED" || isStale(o)) return null;
-  return <PackBox orderId={o.id} packing={o.shipmentPacking} ttn={o.trackingNumber} onDone={onPacked} />;
+  return <PackBox orderId={o.id} packing={o.shipmentPacking} ttn={o.trackingNumber} onDone={onPacked} postomat={o.npServiceType === "POSTOMAT"} />;
 }
 
 export function DispatchCard({ o, np, onOpen, onZoom }: { o: AdminDispatchOrder; np: CardNp; onOpen: () => void; onZoom: (src: string) => void }) {

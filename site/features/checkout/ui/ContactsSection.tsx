@@ -1,6 +1,6 @@
 import { formatPhone } from "@shop/core/phone";
 import type { OrderField } from "@shop/customer/checkout/order-request";
-import { recipientErrors, type Recipient } from "@shop/customer/delivery/recipient";
+import { namePartShown, recipientErrors, type Recipient } from "@shop/customer/delivery/recipient";
 import { Input } from "@shop/ui/primitives";
 import { useCheckoutT } from "@/i18n/checkout";
 import { Section } from "./parts";
@@ -34,8 +34,8 @@ export function ContactsSection({ recipient, onRecipient, phone, onPhone, phoneO
           value={recipient.lastName}
           onChange={(v) => set({ lastName: v })}
           invalid={err.lastName}
-          bad={(touched && err.lastName) || serverName}
-          error={t("delivery.recipient.lastNameError")}
+          bad={namePartShown(err, "lastName", touched, serverName)}
+          error={t(err.latin.lastName ? "delivery.recipient.latinError" : "delivery.recipient.lastNameError")}
           autoComplete="family-name"
         />
         <NameInput
@@ -43,11 +43,18 @@ export function ContactsSection({ recipient, onRecipient, phone, onPhone, phoneO
           value={recipient.firstName}
           onChange={(v) => set({ firstName: v })}
           invalid={err.firstName}
-          bad={(touched && err.firstName) || serverName}
-          error={t("delivery.recipient.firstNameError")}
+          bad={namePartShown(err, "firstName", touched, serverName)}
+          error={t(err.latin.firstName ? "delivery.recipient.latinError" : "delivery.recipient.firstNameError")}
           autoComplete="given-name"
         />
-        <NameInput label={t("delivery.recipient.middleName")} value={recipient.middleName} onChange={(v) => set({ middleName: v })} autoComplete="additional-name" />
+        <NameInput
+          label={t("delivery.recipient.middleName")}
+          value={recipient.middleName}
+          onChange={(v) => set({ middleName: v })}
+          bad={err.middleName}
+          error={t("delivery.recipient.latinError")}
+          autoComplete="additional-name"
+        />
         <Input
           label={t("checkout.phone")}
           inputMode="tel"

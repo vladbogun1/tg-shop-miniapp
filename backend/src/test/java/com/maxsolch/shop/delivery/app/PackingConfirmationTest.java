@@ -67,8 +67,9 @@ class PackingConfirmationTest {
     private final ParcelSizeService parcels = mock(ParcelSizeService.class);
     private final PackingMemoryStore memory = mock(PackingMemoryStore.class);
     private final AdminAuditService audit = mock(AdminAuditService.class);
+    private final PostomatCells postomats = mock(PostomatCells.class);
     private final PackingConfirmation confirmation = new PackingConfirmation(locks, shipments, orders, editing,
-            store, catalog, parcels, memory, mock(CurrentActor.class), mock(AdminDirectory.class), audit,
+            store, catalog, parcels, memory, mock(CurrentActor.class), mock(AdminDirectory.class), audit, postomats,
             Clock.fixed(NOW, ZoneOffset.UTC));
 
     private final List<OrderShipment> rows = new ArrayList<>();
@@ -146,6 +147,47 @@ class PackingConfirmationTest {
         assertThat(done.shipment().packing().boxLabel()).isEqualTo("Коробка 5 кг · 8 см");
         assertThat(done.shipment().packing().unconfirmed()).isFalse();
         verify(audit).record(eq("NP_BOX_CONFIRM"), eq("ORDER"), eq(ORDER_ID), anyString());
+    }
+
+    private NpBox npBag() {
+        NpBox b = new NpBox();
+        b.setId(UuidUtil.randomBytes());
+        b.setName("Пакет НП");
+        b.setKind(NpBox.KIND_BAG);
+        b.setLengthMm(550);
+        b.setWidthMm(500);
+        b.setTareG(50);
+        when(catalog.find(any())).thenAnswer(i -> java.util.Arrays.equals(i.getArgument(0), b.getId())
+                ? Optional.of(b) : Optional.empty());
+        return b;
+    }
+
+    @Test
+    void aBagIntoAParcelLockerIsFoldedToTheCell() {
+        // «Пакет НП» 55×50 cm into a 60×40×30 locker was refused as «больше 60×40×30» (#5e9f3f1a, 13.11.2026).
+        NpBox bag = npBag();
+        when(postomats.cell(row, order)).thenReturn(new int[] {300, 400, 600});
+
+        Confirmed done = confirmation.confirm(ORDER_ID, catalogBox(bag, null));
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(editing).updateHeld(eq(ORDER), o.capture());
+        assertThat(o.getValue().lengthMm()).isEqualTo(550);
+        assertThat(o.getValue().widthMm()).isEqualTo(400);
+        assertThat(o.getValue().heightMm()).isEqualTo(50);
+        assertThat(done.shipment().packing().boxLabel()).isEqualTo("Пакет НП · сложить до 55×40 см");
+    }
+
+    @Test
+    void aBagToABranchKeepsItsSides() {
+        NpBox bag = npBag();
+
+        confirmation.confirm(ORDER_ID, catalogBox(bag, null));
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(editing).updateHeld(eq(ORDER), o.capture());
+        assertThat(o.getValue().widthMm()).isEqualTo(500);
+        assertThat(row.getBoxLabel()).isEqualTo("Пакет НП");
     }
 
     @Test

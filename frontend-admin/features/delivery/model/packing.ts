@@ -17,6 +17,25 @@ export function isBagBox(b: Pick<NpBox, "kind" | "heightsMm">): boolean {
   return b.kind === "BAG" || b.heightsMm.length === 0;
 }
 
+/**
+ * Стандартная ячейка поштомата НП, мм, меньшая сторона первой (60×40×30 см). У конкретного поштомата бывает меньше —
+ * это проверит сервер; здесь — чтобы упаковщик не выбирал заведомо не влезающую коробку.
+ */
+export const POSTOMAT_CELL_MM = [300, 400, 600] as const;
+
+/** Посылка Д×Ш×В влезает в ячейку поштомата (стороны сравниваются по возрастанию — коробку можно положить на бок). */
+export function fitsPostomat(l: number, w: number, h: number): boolean {
+  const d = [l, w, h].sort((a, b) => a - b);
+  return d.every((x, i) => x <= POSTOMAT_CELL_MM[i]);
+}
+
+/** Коробка на этой высоте влезает в поштомат; пакет — всегда: сервер сложит его до ячейки, если товар влезает. */
+export function boxFitsPostomat(b: Pick<NpBox, "kind" | "lengthMm" | "widthMm" | "heightsMm">, heightMm?: number | null): boolean {
+  if (isBagBox(b)) return true;
+  const heights = heightMm != null ? [heightMm] : b.heightsMm;
+  return heights.some((h) => fitsPostomat(b.lengthMm, b.widthMm, h));
+}
+
 /** «40×24 · высота 20/13/8» или «36×25 · пакет». */
 export function boxSizeText(b: Pick<NpBox, "kind" | "lengthMm" | "widthMm" | "heightsMm">): string {
   const sides = `${cm(b.lengthMm)}×${cm(b.widthMm)}`;

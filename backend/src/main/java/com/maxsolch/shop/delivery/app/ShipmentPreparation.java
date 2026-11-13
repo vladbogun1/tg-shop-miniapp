@@ -15,6 +15,7 @@ import com.maxsolch.shop.order.domain.NpServiceType;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.platform.util.CyrillicNames;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Reads what a waybill of the order needs and says what blocks it ({@link Prepared#problems()}) or may go wrong
@@ -34,7 +34,6 @@ import java.util.regex.Pattern;
 @Component
 class ShipmentPreparation {
 
-    private static final Pattern LATIN = Pattern.compile("[A-Za-z]");
 
     private final NovaPoshtaGateway api;
     private final NovaPoshtaSenderService sender;
@@ -150,15 +149,19 @@ class ShipmentPreparation {
     }
 
     /** [last, first, middle]: the dialog's, else the order's stored parts, else split from the one line. */
-    private static String[] recipient(ShippingOrder order, Options o, List<String> problems, List<String> warnings) {
+    static String[] recipient(ShippingOrder order, Options o, List<String> problems, List<String> warnings) {
         String[] split = splitName(order.customerName());
-        String last = firstNonBlank(o.recipientLastName(), order.recipientLastName(), split[0]);
-        String first = firstNonBlank(o.recipientFirstName(), order.recipientFirstName(), split[1]);
-        String middle = firstNonBlank(o.recipientMiddleName(), order.recipientMiddleName(), split[2]);
+        // Look-alike Latin letters in a Cyrillic word («Курзiн») are swapped: old orders and the dialog's fields.
+        String last = CyrillicNames.fixLookalikes(firstNonBlank(o.recipientLastName(), order.recipientLastName(), split[0]));
+        String first = CyrillicNames.fixLookalikes(firstNonBlank(o.recipientFirstName(), order.recipientFirstName(), split[1]));
+        String middle = CyrillicNames.fixLookalikes(firstNonBlank(o.recipientMiddleName(), order.recipientMiddleName(), split[2]));
+        String line = String.join(" ", last == null ? "" : last, first == null ? "" : first, middle == null ? "" : middle).trim();
         if (last == null || first == null) {
             problems.add("Нужны фамилия и имя получателя");
-        } else if (LATIN.matcher(last + first + (middle == null ? "" : middle)).find()) {
-            warnings.add("Имя получателя латиницей — Новая почта принимает только кириллицу");
+        } else if (CyrillicNames.hasLatin(line)) {
+            // NP answers «LastName has invalid characters»: say it here, before the waybill, with the name itself.
+            problems.add("Имя получателя «" + line + "» с латинскими буквами — Новая почта принимает только кириллицу. "
+                    + "Исправьте фамилию и имя получателя в «Изменить доставку»");
         } else if (blankToNull(o.recipientLastName()) == null && blankToNull(order.recipientLastName()) == null) {
             warnings.add("Фамилия и имя взяты из одной строки «" + order.customerName()
                     + "» — проверьте, что фамилия — это «" + last + "»");

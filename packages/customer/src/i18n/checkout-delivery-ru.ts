@@ -22,6 +22,7 @@ export const checkoutDeliveryRu = {
   "delivery.recipient.middleName": "Отчество (необязательно)",
   "delivery.recipient.lastNameError": "Укажите фамилию",
   "delivery.recipient.firstNameError": "Укажите имя",
+  "delivery.recipient.latinError": "Пишите кириллицей, как в паспорте: Новая почта не принимает латиницу",
   "delivery.recipient.hint": "Как в паспорте: по этим данным посылку выдадут на почте.",
   "delivery.postomat.field": "Почтомат",
   "delivery.postomat.none": "В этом городе нет подходящего почтомата",

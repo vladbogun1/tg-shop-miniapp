@@ -110,4 +110,16 @@ class BoxOptionsTest {
         assertThat(BoxOptions.allows(BAG, 200)).isFalse();
         assertThat(BoxOptions.cm(85)).isEqualTo("8,5");
     }
+
+    @Test
+    void aSoftBagFoldsIntoAParcelLockerCellWhenTheGoodsFit() {
+        int[] cell = {300, 400, 600};
+        assertThat(BoxOptions.foldBag(550, 500, 30, List.of(GLIDES), cell)).containsExactly(550, 400);
+        assertThat(BoxOptions.foldBag(500, 550, 30, List.of(KEYBOARD), cell)).containsExactly(550, 400);
+        // already fits — nothing to fold
+        assertThat(BoxOptions.foldBag(360, 250, 30, List.of(GLIDES), cell)).isNull();
+        // a pad 38×28 still lies flat in 55×40; a 45×42 one does not
+        assertThat(BoxOptions.foldBag(550, 500, 10, List.of(PAD), cell)).containsExactly(550, 400);
+        assertThat(BoxOptions.foldBag(550, 500, 10, List.of(new Unit(600, 450, 420, 4, true)), cell)).isNull();
+    }
 }

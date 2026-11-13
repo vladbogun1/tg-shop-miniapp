@@ -20,6 +20,7 @@ export const checkoutDeliveryUk: Record<keyof typeof checkoutDeliveryRu, string>
   "delivery.recipient.middleName": "По батькові (необов'язково)",
   "delivery.recipient.lastNameError": "Вкажіть прізвище",
   "delivery.recipient.firstNameError": "Вкажіть ім'я",
+  "delivery.recipient.latinError": "Пишіть кирилицею, як у паспорті: Нова пошта не приймає латиницю",
   "delivery.recipient.hint": "Як у паспорті: за цими даними посилку видадуть на пошті.",
   "delivery.postomat.field": "Поштомат",
   "delivery.postomat.none": "У цьому місті немає відповідного поштомата",

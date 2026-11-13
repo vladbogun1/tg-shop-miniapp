@@ -37,6 +37,9 @@ final class OrderAddressChanges {
         }
         String before = full(now);
         RecipientName next = new RecipientName(last, first, isBlank(middle) ? null : middle);
+        if (next.latin()) {
+            throw new DomainException.BadRequest(OrderError.RECIPIENT_NOT_CYRILLIC);
+        }
         if (!before.equals(full(next))) {
             changes.add("получатель: " + (before.isEmpty() ? "—" : before) + " → " + full(next));
             order.nameRecipient(next);

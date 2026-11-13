@@ -33,7 +33,7 @@ export function ShipmentPacking({ orderId, s, open, onChanged }: { orderId: stri
   return (
     <>
       {(canPack || p.boxConfirmedAt) && (
-        <PackBox orderId={orderId} packing={p} ttn={s.ttn} onDone={onChanged} readOnly={!canPack} />
+        <PackBox orderId={orderId} packing={p} ttn={s.ttn} onDone={onChanged} readOnly={!canPack} postomat={s.serviceType === "POSTOMAT"} />
       )}
       <NpMeasure p={p} s={s} />
     </>

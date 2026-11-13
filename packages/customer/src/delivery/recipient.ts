@@ -35,13 +35,53 @@ export function namePartOk(v: string): boolean {
   return v.trim().length >= NAME_PART_MIN;
 }
 
-export function recipientErrors(r: Recipient): { lastName: boolean; firstName: boolean } {
-  return { lastName: !namePartOk(r.lastName), firstName: !namePartOk(r.firstName) };
+// Нова пошта принимает имя только кириллицей («LastName has invalid characters», заказ #e6e83c17: «Курзiн» с
+// латинской «i»). Латинский двойник кириллической буквы внутри кириллического слова сервер заменит сам; слово
+// целиком латиницей — нет: его надо переписать. Без \p{…} и lookbehind — iOS 15.4 (docs/BROWSER-SUPPORT.md).
+const LATIN_TWINS = "aceiopxykABCEHIKMOPTXY";
+const CYRILLIC_TWINS = "асеіорхукАВСЕНІКМОРТХУ";
+const CYRILLIC = /[\u0400-\u04FF]/;
+const LATIN = /[A-Za-z]/;
+
+/** «Курзiн» (латинская i) → «Курзін»; слово без кириллицы не трогаем. Так же делает сервер. */
+export function fixLookalikes(v: string): string {
+  return v
+    .split(/([\s\-'ʼ’`]+)/)
+    .map((word) => (CYRILLIC.test(word) ? word.replace(/[A-Za-z]/g, (c) => CYRILLIC_TWINS.charAt(LATIN_TWINS.indexOf(c)) || c) : word))
+    .join("");
+}
+
+/** В части имени остались латинские буквы — Нова пошта не примет. */
+export function namePartLatin(v: string): boolean {
+  return LATIN.test(fixLookalikes(v));
+}
+
+export interface RecipientErrors {
+  lastName: boolean;
+  firstName: boolean;
+  middleName: boolean;
+  /** Ошибка — латиница (показываем сразу, не дожидаясь «Оформить»). */
+  latin: { lastName: boolean; firstName: boolean; middleName: boolean };
+}
+
+export function recipientErrors(r: Recipient): RecipientErrors {
+  const latin = { lastName: namePartLatin(r.lastName), firstName: namePartLatin(r.firstName), middleName: namePartLatin(r.middleName) };
+  return {
+    lastName: !namePartOk(r.lastName) || latin.lastName,
+    firstName: !namePartOk(r.firstName) || latin.firstName,
+    middleName: latin.middleName,
+    latin,
+  };
+}
+
+/** Показать ошибку обязательной части ФИО: латиницу — сразу, пустую — после «Оформить» или отказа сервера. */
+export function namePartShown(e: RecipientErrors, part: "lastName" | "firstName", touched: boolean, serverRejected: boolean): boolean {
+  return (touched && e[part]) || e.latin[part] || serverRejected;
 }
 
 export function recipientOk(r: Recipient): boolean {
   const e = recipientErrors(r);
-  return !e.lastName && !e.firstName;
+  return !e.lastName && !e.firstName && !e.middleName;
 }
 
 /** Одна строка для сводки: «Прізвище Ім'я По батькові». */

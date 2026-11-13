@@ -35,14 +35,15 @@ export function Notice({ tone, title, items, children }: { tone: "danger" | "war
   );
 }
 
-export function Chip({ active, onClick, children }: { active?: boolean; onClick: () => void; children: ReactNode }) {
+export function Chip({ active, disabled, onClick, children }: { active?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={!!active}
       className={cn(
-        "focusable nb-press min-h-8 max-w-full rounded-full border px-3 py-1 text-left text-[12px] font-semibold transition-colors pointer-coarse:min-h-10",
+        "focusable nb-press min-h-8 max-w-full rounded-full border px-3 py-1 text-left text-[12px] font-semibold transition-colors pointer-coarse:min-h-10 disabled:cursor-not-allowed disabled:opacity-45",
         active
           ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
           : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]",

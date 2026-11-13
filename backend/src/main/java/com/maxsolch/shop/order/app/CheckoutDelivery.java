@@ -9,6 +9,7 @@ import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.RecipientName;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.util.CyrillicNames;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Component;
@@ -62,7 +63,11 @@ class CheckoutDelivery {
             return new Recipient(oneLine, null);
         }
         RecipientName parts = new RecipientName(cut(last, 128), cut(first, 128), cut(trimToNull(np.middleName()), 128));
-        return new Recipient(oneLine != null ? oneLine : cut(last + " " + first, 255), parts);
+        if (parts.latin()) {
+            // NP refuses Latin letters in the recipient's name: the waybill would never be made.
+            throw new DomainException.BadRequest(OrderError.RECIPIENT_NOT_CYRILLIC);
+        }
+        return new Recipient(oneLine != null ? CyrillicNames.fixLookalikes(oneLine) : cut(parts.oneLine(), 255), parts);
     }
 
     /**

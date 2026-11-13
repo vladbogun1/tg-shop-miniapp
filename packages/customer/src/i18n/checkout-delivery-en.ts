@@ -20,6 +20,7 @@ export const checkoutDeliveryEn: Record<keyof typeof checkoutDeliveryRu, string>
   "delivery.recipient.middleName": "Middle name (optional)",
   "delivery.recipient.lastNameError": "Enter the last name",
   "delivery.recipient.firstNameError": "Enter the first name",
+  "delivery.recipient.latinError": "Write it in Cyrillic: Nova Poshta does not accept Latin letters",
   "delivery.recipient.hint": "As in the passport: the parcel is handed out by these details.",
   "delivery.postomat.field": "Parcel locker",
   "delivery.postomat.none": "No parcel locker found in this city",
