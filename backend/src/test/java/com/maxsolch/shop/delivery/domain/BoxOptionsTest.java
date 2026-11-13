@@ -57,6 +57,26 @@ class BoxOptionsTest {
     }
 
     @Test
+    void aSuggestedBagParcelIsCutDownToTheGoods_aBoxIsNot() {
+        List<Unit> iem = List.of(IEM, EAR_TIPS);
+        Parcel bagged = ParcelPacking.pack(iem, DEF, BoxOptions.presets(List.of(BAG_S), iem));
+        assertThat(bagged.seats().get(0).box()).isEqualTo("Пакет полиэтиленовый S");
+        assertThat(bagged.lengthMm()).isEqualTo(490);
+
+        Parcel wrapped = BoxOptions.wrapBag(bagged, List.of(BAG_S, NP2), iem);
+        assertThat(wrapped.seats()).singleElement().satisfies(s -> {
+            assertThat(s.lengthMm()).isEqualTo(170);
+            assertThat(s.widthMm()).isEqualTo(120);
+            assertThat(s.heightMm()).isEqualTo(120);
+        });
+        assertThat(wrapped.volumetricKg()).isLessThan(0.62);
+        assertThat(wrapped.weightG()).isEqualTo(bagged.weightG());
+
+        Parcel boxed = ParcelPacking.pack(iem, DEF, BoxOptions.presets(List.of(NP2), iem));
+        assertThat(BoxOptions.wrapBag(boxed, List.of(BAG_S, NP2), iem)).isSameAs(boxed);
+    }
+
+    @Test
     void aBagFarBulkierThanItsWeightIsFlagged() {
         assertThat(BoxOptions.bagVolumeWarning(490, 390, 120, 670)).contains("5,73 кг по объёму")
                 .contains("0,67 кг");

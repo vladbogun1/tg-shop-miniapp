@@ -103,6 +103,27 @@ public final class BoxOptions {
         return new int[] {Math.min(l, gl + BAG_MARGIN_MM), Math.min(w, gw + BAG_MARGIN_MM)};
     }
 
+    /**
+     * A one-seat parcel the packing put into a bag, as NP measures it: the goods wrapped in the bag
+     * ({@link #bagFootprint}), not the bag laid flat. The packing picks a bag by its full size (the goods must fill
+     * no more than its fill factor); only the result is cut down. Other parcels as they are.
+     */
+    public static Parcel wrapBag(Parcel p, List<NpBox> boxes, List<Unit> units) {
+        if (p.seats().size() != 1) {
+            return p;
+        }
+        Parcel.Seat s = p.seats().get(0);
+        for (NpBox b : boxes) {
+            if (b.bag() && b.getName().equals(s.box())) {
+                int[] fp = bagFootprint(b.getLengthMm(), b.getWidthMm(), units);
+                Parcel.Seat wrapped = new Parcel.Seat(s.weightG(), fp[0], fp[1], s.heightMm(), s.box());
+                return new Parcel(p.weightG(), fp[0], fp[1], p.heightMm(), p.source(), List.of(wrapped),
+                        p.packMinor(), p.documents());
+            }
+        }
+        return p;
+    }
+
     /** NP's volumetric weight of these sides, g (rounded up). */
     public static long volumeWeightG(int lengthMm, int widthMm, int heightMm) {
         long mm3 = (long) lengthMm * widthMm * heightMm;

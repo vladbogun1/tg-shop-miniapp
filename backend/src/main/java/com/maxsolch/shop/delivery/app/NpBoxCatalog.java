@@ -2,6 +2,7 @@ package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.BoxOptions;
 import com.maxsolch.shop.delivery.domain.NpBox;
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.domain.ParcelPacking.BoxPreset;
 import com.maxsolch.shop.delivery.domain.ParcelPacking.Unit;
 import com.maxsolch.shop.delivery.infra.NpBoxRepository;
@@ -38,6 +39,11 @@ public class NpBoxCatalog {
     /** Presets without goods (the waybill dialog's list): boxes at every fold height; bags are left out. */
     public List<BoxPreset> presets() {
         return BoxOptions.presets(usable(), null);
+    }
+
+    /** A one-seat parcel packed into a bag, cut down to the goods wrapped in it (see {@link BoxOptions#wrapBag}). */
+    public Parcel wrapBag(Parcel packed, List<Unit> units) {
+        return BoxOptions.wrapBag(packed, usable(), units);
     }
 
     Optional<NpBox> find(byte[] id) {

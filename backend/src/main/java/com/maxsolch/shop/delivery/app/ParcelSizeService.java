@@ -69,7 +69,8 @@ public class ParcelSizeService {
 
     private Parcel forLines(List<CartLine> lines, int maxUnits) {
         Goods g = goods(lines, maxUnits);
-        Parcel packed = ParcelPacking.pack(g.units(), defaults(), boxes.presets(g.units()), fill());
+        Parcel packed = boxes.wrapBag(ParcelPacking.pack(g.units(), defaults(), boxes.presets(g.units()), fill()),
+                g.units());
         return documents(packed, !g.units().isEmpty() && g.flat());
     }
 
