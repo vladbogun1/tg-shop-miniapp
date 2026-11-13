@@ -186,17 +186,21 @@ public class ShipmentStatusApplier {
         if (arrivedFirst) {
             s.setArrivalNotifiedAt(now);
         }
+        if (next != ShipmentStage.RECEIVED) {
+            return new Effects(s.getOrderId(), s.getTtn(), next, arrivedFirst, move,
+                    s.collects() ? s.getCodMinor() : 0, false, false);
+        }
         // Only this very report can confirm the money: a stored amount may be older than the pickup.
-        boolean hold = next == ShipmentStage.RECEIVED && !s.pickupSettles(u.collectedMinor());
-        return new Effects(s.getOrderId(), s.getTtn(), next, arrivedFirst, move, s.collects() ? s.getCodMinor() : 0,
-                false, hold);
+        long owes = orders.find(s.getOrderId()).map(ShippingOrder::codMinor).orElse(s.getCodMinor());
+        return new Effects(s.getOrderId(), s.getTtn(), next, arrivedFirst, move, s.collectDueMinor(owes), false,
+                !s.pickupSettles(u.collectedMinor(), owes));
     }
 
     private static void copyFields(OrderShipment s, StatusUpdate u) {
         if (u.code() != null) {
             s.setStatusCode(NpJson.cut(u.code().trim(), 8));
         }
-        if (u.text() != null) {
+        if (u.text() != null && !keepsReason(s.getStatusText(), u.text())) {
             s.setStatusText(NpJson.cut(u.text(), 255));
         }
         if (u.scheduledDelivery() != null) {
@@ -208,6 +212,14 @@ public class ShipmentStatusApplier {
         if (u.returnTtn() != null) {
             s.setReturnTtn(NpJson.cut(u.returnTtn(), 32));
         }
+    }
+
+    /**
+     * The webhook names the status only; the poll adds NP's reason («… · Одержувач не з'явився …»): the same status
+     * from the webhook keeps that reason (it decides «не забрал» vs «отказ» on «Внимание»).
+     */
+    static boolean keepsReason(String stored, String incoming) {
+        return stored != null && !incoming.isBlank() && stored.startsWith(incoming.trim() + " · ");
     }
 
     /**

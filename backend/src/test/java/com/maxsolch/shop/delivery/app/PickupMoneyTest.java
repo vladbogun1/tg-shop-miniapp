@@ -70,6 +70,7 @@ class PickupMoneyTest {
         when(o.id()).thenReturn(orderId);
         when(o.status()).thenReturn(OrderStatus.SHIPPED);
         when(o.phone()).thenReturn("+380670000001");
+        when(o.codMinor()).thenReturn(COD);
         when(orders.find(orderId)).thenReturn(Optional.of(o));
     }
 
@@ -91,7 +92,7 @@ class PickupMoneyTest {
         applier.apply(shipmentId, update("9", COD, null), true);
         verify(orders).markDelivered(orderId, COD);
         assertThat(s.getNpCollectedMinor()).isEqualTo(COD);
-        assertThat(s.partlyCollected()).isFalse();
+        assertThat(s.partlyCollected(COD)).isFalse();
     }
 
     @Test
@@ -99,7 +100,7 @@ class PickupMoneyTest {
         applier.apply(shipmentId, update("9", 540_000L, null), true);
         verify(orders, never()).markDelivered(any(), anyLong());
         assertThat(s.getNpCollectedMinor()).isEqualTo(540_000L);
-        assertThat(s.partlyCollected()).isTrue();
+        assertThat(s.partlyCollected(COD)).isTrue();
 
         ParcelIssues.Reason r = ParcelIssues.reason(s, order(OrderStatus.SHIPPED), NOW, limits());
         assertThat(r.kind()).isEqualTo("PARTIAL_PICKUP");
@@ -113,7 +114,7 @@ class PickupMoneyTest {
     void pollWithoutTheAmount_holds() {
         applier.apply(shipmentId, update("9", null, null), true);
         verify(orders, never()).markDelivered(any(), anyLong());
-        assertThat(s.partlyCollected()).isFalse(); // unknown, not partial: «Посылку забрали, а заказ «Отправлен»»
+        assertThat(s.partlyCollected(COD)).isFalse(); // unknown, not partial: «Посылку забрали, а заказ «Отправлен»»
         assertThat(ParcelIssues.reason(s, order(OrderStatus.SHIPPED), NOW, limits()).kind())
                 .isEqualTo("RECEIVED_SHIPPED");
     }
@@ -150,6 +151,61 @@ class PickupMoneyTest {
 
         applier.apply(shipmentId, update("9", null, "380670000001"), true);
         verify(orders).markDelivered(orderId, 0L);
+    }
+
+    @Test
+    void webhookThenPollWithAllTheMoney_closesOnce() {
+        applier.apply(shipmentId, new ShipmentStatusApplier.StatusUpdate("9", "Отримано", null, null, null,
+                NOW.minusSeconds(60)), false);
+        verify(orders, never()).markDelivered(any(), anyLong());
+        applier.apply(shipmentId, update("9", COD, null), true);
+        verify(orders).markDelivered(orderId, COD);
+    }
+
+    /**
+     * «Не забрал на почте» booked the partial pickup: the order now owes 5 400, the waybill still says 14 400. The
+     * next poll with 5 400 collected closes the order on 5 400 — not held forever, «Внимание» row goes.
+     */
+    @Test
+    void afterTheReturnWizard_theNextPollClosesOnWhatTheOrderOwes() {
+        long bought = 540_000L;
+        applier.apply(shipmentId, update("9", bought, null), true);
+        verify(orders, never()).markDelivered(any(), anyLong());
+
+        ShippingOrder settled = order(OrderStatus.SHIPPED, bought);
+        when(orders.find(orderId)).thenReturn(Optional.of(settled));
+        assertThat(s.partlyCollected(bought)).isFalse();
+        assertThat(ParcelIssues.reason(s, settled, NOW, limits()).kind()).isEqualTo("RECEIVED_SHIPPED");
+
+        applier.apply(shipmentId, update("9", bought, null), true);
+        verify(orders).markDelivered(orderId, bought);
+    }
+
+    @Test
+    void orderOwesNothing_closesWithoutMoney() {
+        ShippingOrder paid = order(OrderStatus.SHIPPED, 0);
+        when(orders.find(orderId)).thenReturn(Optional.of(paid));
+        applier.apply(shipmentId, update("9", null, null), false);
+        verify(orders).markDelivered(orderId, 0L);
+    }
+
+    @Test
+    void webhookStatusKeepsThePollsReason() {
+        assertThat(ShipmentStatusApplier.keepsReason("Відмова від отримання · Одержувач не з'явився",
+                "Відмова від отримання")).isTrue();
+        assertThat(ShipmentStatusApplier.keepsReason("Відмова від отримання · Одержувач не з'явився",
+                "Прибув у відділення")).isFalse();
+        assertThat(ShipmentStatusApplier.keepsReason(null, "Відмова")).isFalse();
+        assertThat(ShipmentStatusApplier.keepsReason("Відмова · x", " ")).isFalse();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"105", "113", "141", "144"})
+    void storageEndedCodesAreUnclaimed(String code) {
+        s.setStage(ShipmentStage.RETURNING.name());
+        s.setStatusCode(code);
+        s.setStatusText("Припинено зберігання");
+        assertThat(ParcelIssues.reason(s, order(OrderStatus.SHIPPED), NOW, limits()).kind()).isEqualTo("UNCLAIMED");
     }
 
     @Test
@@ -217,14 +273,19 @@ class PickupMoneyTest {
         ShippingOrder shipped = orders.find(orderId).orElseThrow();
         when(orders.findAll(any())).thenReturn(List.of(shipped, delivered));
         assertThat(tracking.recheckReceived(NOW)).containsExactly(s);
-        verify(shipments).findReceivedSince(ShipmentStage.RECEIVED.name(), NOW.minus(Duration.ofDays(2)),
+        verify(shipments).findReceivedSince(ShipmentStage.RECEIVED.name(), NOW.minus(ShipmentTrackingService.RECHECK_RECEIVED),
                 NOW.minus(ShipmentTrackingService.MIN_INTERVAL), org.springframework.data.domain.PageRequest.of(0, 200));
     }
 
     private ShippingOrder order(OrderStatus status) {
+        return order(status, COD);
+    }
+
+    private ShippingOrder order(OrderStatus status, long owes) {
         ShippingOrder o = mock(ShippingOrder.class);
         when(o.id()).thenReturn(orderId);
         when(o.status()).thenReturn(status);
+        when(o.codMinor()).thenReturn(owes);
         return o;
     }
 

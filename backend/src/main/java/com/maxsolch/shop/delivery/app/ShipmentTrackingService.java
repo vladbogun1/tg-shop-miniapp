@@ -48,8 +48,11 @@ public class ShipmentTrackingService {
     static final Duration MIN_INTERVAL = Duration.ofMinutes(20);
     /** Shipments older than this are not polled any more (setting novaposhta.trackingMaxDays). */
     static final int DEFAULT_MAX_DAYS = 60;
-    /** A picked-up parcel whose order still waits is asked about again for this long (money, phone). */
-    static final Duration RECHECK_RECEIVED = Duration.ofDays(2);
+    /**
+     * A picked-up parcel whose order still waits is asked about again for this long (money, phone): after «Не забрал на
+     * почте» the next look closes the order with what NP collected.
+     */
+    static final Duration RECHECK_RECEIVED = Duration.ofDays(7);
 
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;

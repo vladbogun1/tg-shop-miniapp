@@ -28,6 +28,8 @@ public class ParcelIssues {
 
     /** Default for {@code novaposhta.createdStaleDays}. */
     static final Duration CREATED_STALE = Duration.ofDays(2);
+    /** NP stopped storing it / the term ran out: «не забрал», not a refusal. */
+    private static final java.util.Set<String> UNCLAIMED_CODES = java.util.Set.of("105", "113", "141", "144");
     static final String RETURN_HINT = " — проверьте посылку и оформите возврат в заказе («Возврат»)";
     private static final List<String> STAGES = List.of(ShipmentStage.REFUSED.name(), ShipmentStage.RETURNING.name(),
             ShipmentStage.NOT_FOUND.name(), ShipmentStage.ARRIVED.name(), ShipmentStage.CREATED.name(),
@@ -139,8 +141,8 @@ public class ParcelIssues {
             if (o.status() != OrderStatus.SHIPPED) {
                 return null;
             }
-            return s.partlyCollected() ? new Reason("PARTIAL_PICKUP", "Частичный выкуп: Новая почта собрала "
-                    + MoneyFormat.uah(s.getNpCollectedMinor()) + " из " + MoneyFormat.uah(s.getCodMinor())
+            return s.partlyCollected(o.codMinor()) ? new Reason("PARTIAL_PICKUP", "Частичный выкуп: Новая почта собрала "
+                    + MoneyFormat.uah(s.getNpCollectedMinor()) + " из " + MoneyFormat.uah(s.collectDueMinor(o.codMinor()))
                     + " — оформите в заказе «Возврат» → «Не забрал на почте — едет назад»", true)
                     : new Reason("RECEIVED_SHIPPED", "Посылку забрали, а заказ всё ещё «Отправлен»", false);
         }
@@ -156,7 +158,8 @@ public class ParcelIssues {
                 || (stage != ShipmentStage.REFUSED && stage != ShipmentStage.RETURNING)) {
             return null;
         }
-        boolean unclaimed = unclaimed(s.getStatusText());
+        boolean unclaimed = (s.getStatusCode() != null && UNCLAIMED_CODES.contains(s.getStatusCode()))
+                || unclaimed(s.getStatusText());
         String what = unclaimed ? "Покупатель не забрал посылку"
                 : stage == ShipmentStage.REFUSED ? "Отказ от посылки" : "Посылка возвращается";
         String back = s.getReturnTtn() != null ? " · ТТН возврата " + s.getReturnTtn() : "";

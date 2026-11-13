@@ -262,16 +262,26 @@ public class OrderShipment {
     }
 
     /**
-     * Whether a pickup NP reported with {@code reportedMinor} collected may close the order by itself: the waybill
-     * collects nothing, or NP collected all of it. Unknown (a webhook, an absent or zero field) or less — a partial
-     * pickup (#1c60c7c7, 13.11.2026) — waits for the admin: a wrong hold costs one tap, a wrong close costs money.
+     * What the pickup must have collected: the waybill's COD, or less when the order owes less now — after «Не забрал
+     * на почте» the order's наложка drops to what was bought, the waybill keeps the old sum. 0 = nothing.
      */
-    public boolean pickupSettles(Long reportedMinor) {
-        return !collects() || codMinor <= 0 || (reportedMinor != null && reportedMinor >= codMinor);
+    public long collectDueMinor(long orderOwesMinor) {
+        return collects() ? Math.max(0, Math.min(codMinor, orderOwesMinor)) : 0;
     }
 
-    /** NP reported less collected at pickup than the waybill asked for («частичный выкуп»). */
-    public boolean partlyCollected() {
-        return collects() && codMinor > 0 && npCollectedMinor != null && npCollectedMinor < codMinor;
+    /**
+     * Whether a pickup NP reported with {@code reportedMinor} collected may close the order by itself: nothing is due,
+     * or NP collected all of it. Unknown (a webhook, an absent or zero field) or less — a partial pickup (#1c60c7c7,
+     * 13.11.2026) — waits for the admin: a wrong hold costs one tap, a wrong close costs money.
+     */
+    public boolean pickupSettles(Long reportedMinor, long orderOwesMinor) {
+        long due = collectDueMinor(orderOwesMinor);
+        return due == 0 || (reportedMinor != null && reportedMinor >= due);
+    }
+
+    /** NP reported less collected at pickup than is due («частичный выкуп» not yet booked in the order). */
+    public boolean partlyCollected(long orderOwesMinor) {
+        long due = collectDueMinor(orderOwesMinor);
+        return due > 0 && npCollectedMinor != null && npCollectedMinor < due;
     }
 }
