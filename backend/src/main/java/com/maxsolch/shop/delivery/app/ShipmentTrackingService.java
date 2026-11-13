@@ -117,7 +117,7 @@ public class ShipmentTrackingService {
      */
     List<OrderShipment> recheckReceived(Instant now) {
         List<OrderShipment> rows = shipments.findReceivedSince(ShipmentStage.RECEIVED.name(),
-                now.minus(RECHECK_RECEIVED), now.minus(MIN_INTERVAL), PageRequest.of(0, 200));
+                now.minus(RECHECK_RECEIVED), now.minus(MIN_INTERVAL), PageRequest.of(0, 1000));
         if (rows.isEmpty()) {
             return rows;
         }

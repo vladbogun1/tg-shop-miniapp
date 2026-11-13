@@ -274,7 +274,7 @@ class PickupMoneyTest {
         when(orders.findAll(any())).thenReturn(List.of(shipped, delivered));
         assertThat(tracking.recheckReceived(NOW)).containsExactly(s);
         verify(shipments).findReceivedSince(ShipmentStage.RECEIVED.name(), NOW.minus(ShipmentTrackingService.RECHECK_RECEIVED),
-                NOW.minus(ShipmentTrackingService.MIN_INTERVAL), org.springframework.data.domain.PageRequest.of(0, 200));
+                NOW.minus(ShipmentTrackingService.MIN_INTERVAL), org.springframework.data.domain.PageRequest.of(0, 1000));
     }
 
     private ShippingOrder order(OrderStatus status) {
