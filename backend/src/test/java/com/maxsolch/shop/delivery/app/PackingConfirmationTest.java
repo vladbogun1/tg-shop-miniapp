@@ -300,6 +300,15 @@ class PackingConfirmationTest {
     }
 
     @Test
+    void aNewOrderIsNotPackedIntoAWaybill() {
+        when(orders.find(ORDER)).thenReturn(Optional.of(NpFixtures.order(OrderStatus.NEW, false, null)));
+        when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> confirmation.confirm(ORDER_ID, catalogBox(np5, 80)))
+                .isInstanceOf(DomainException.Conflict.class);
+        verifyNoInteractions(creation);
+    }
+
+    @Test
     void aNumberTypedByHandWithoutItsRowYetMakesNoSecondWaybill() {
         when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> confirmation.confirm(ORDER_ID, catalogBox(np5, 80)))

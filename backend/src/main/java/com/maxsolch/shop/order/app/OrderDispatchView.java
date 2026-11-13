@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderPaymentState;
@@ -49,8 +50,12 @@ public class OrderDispatchView {
         Map<String, String> photos = thumbnails.of(orders.stream().flatMap(o -> o.getItems().stream()).toList());
         Map<String, OrderShipmentView.ShipmentBrief> parcels = shipments.forOrders(
                 orders.stream().map(Order::getId).toList());
+        // Only approved NP orders with no waybill and no typed number wait for «Упаковано»: the rest are not loaded.
         Map<String, OrderShipmentView.Packing> toPack = shipments.toPack(orders.stream()
-                .filter(o -> !parcels.containsKey(UuidUtil.toString(o.getId()))).map(Order::getId).toList());
+                .filter(o -> o.getStatus() == OrderStatus.APPROVED && o.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
+                        && (o.getTrackingNumber() == null || o.getTrackingNumber().isBlank())
+                        && !parcels.containsKey(UuidUtil.toString(o.getId())))
+                .map(Order::getId).toList());
         return orders.stream().map(o -> toDispatch(o, photos, parcels, toPack)).toList();
     }
 

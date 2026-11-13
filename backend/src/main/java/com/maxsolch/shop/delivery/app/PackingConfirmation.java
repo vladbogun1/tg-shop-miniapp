@@ -16,6 +16,7 @@ import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.delivery.infra.PackingMemoryStore;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AdminDirectory;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -115,6 +116,11 @@ public class PackingConfirmation {
         int width = folded == null ? c.widthMm() : folded[1];
         OrderShipment target = s;
         boolean updated = false;
+        if (s == null && (order.status() != OrderStatus.APPROVED || order.archived())) {
+            // The waybill is made by packing an approved order only; before approval — the main admin by hand.
+            throw new DomainException.Conflict(DeliveryError.NP_BOX_NO_TTN, "Сначала одобрите заказ — ТТН создаётся "
+                    + "при «Упаковано» у одобренного заказа");
+        }
         if (s == null && ShipmentManualSync.typed(order) != null) {
             // A number typed by hand is not tracked yet (its row comes after commit): never make a second waybill.
             throw new DomainException.Conflict(DeliveryError.NP_BOX_NO_TTN,
