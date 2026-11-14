@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * Адрес Новой Почты в окне «Получатель и доставка»: тип (отделение / почтомат / курьер), город из справочника,
- * дальше — отделение нужного типа или улица (справочник или вручную), дом и квартира.
+ * Адрес Новой Почты (окна «Получатель и доставка» и «Новый заказ»): тип (отделение / почтомат / курьер), город из
+ * справочника, дальше — отделение нужного типа или улица (справочник или вручную), дом и квартира.
  */
 import { useCallback, useState } from "react";
-import type { ShopForm } from "@shop/ui/form";
 import { cn } from "@/lib/cn";
-import { Input } from "@/components/ui/Input";
+import { Input, type InputProps } from "@/components/ui/Input";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { npDirectoryApi } from "@/features/delivery";
 import type { NpCity, NpStreet, NpWarehouse } from "../../api";
-import { NP_SERVICES, type DeliveryText, type NpService, type Place, type StreetPick } from "../../model/delivery-edit";
+import { NP_SERVICES, type NpService, type Place, type StreetPick } from "../../model/delivery-edit";
 
-type Register = ShopForm<DeliveryText>["register"];
+/** Props of the «Дом» / «Квартира» inputs: `form.register(field)` in a react-hook-form, value + onChange elsewhere. */
+export type HouseInput = (field: "building" | "flat") => InputProps;
 
 export interface NpAddressState {
   city: Place | null;
@@ -53,12 +53,12 @@ function StreetFields({
   cityRef,
   street,
   setStreet,
-  register,
+  houseInput,
 }: {
   cityRef: string;
   street: StreetPick | null;
   setStreet: (s: StreetPick | null) => void;
-  register: Register;
+  houseInput: HouseInput;
 }) {
   const [manual, setManual] = useState(false);
   const fetchStreets = useCallback((q: string) => npDirectoryApi.streets(cityRef, q), [cityRef]);
@@ -91,8 +91,8 @@ function StreetFields({
         {manual ? "Искать по справочнику" : "Не нашли улицу? Ввести вручную"}
       </button>
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Дом" {...register("building")} autoComplete="off" />
-        <Input label="Квартира" {...register("flat")} autoComplete="off" />
+        <Input label="Дом" {...houseInput("building")} autoComplete="off" />
+        <Input label="Квартира" {...houseInput("flat")} autoComplete="off" />
       </div>
     </div>
   );
@@ -101,11 +101,11 @@ function StreetFields({
 export function NpAddressFields({
   value,
   onChange,
-  register,
+  houseInput,
 }: {
   value: NpAddressState;
   onChange: (patch: Partial<NpAddressState>) => void;
-  register: Register;
+  houseInput: HouseInput;
 }) {
   const { city, wh, service, street } = value;
   const cityRef = city?.ref;
@@ -130,7 +130,7 @@ export function NpAddressFields({
         onClear={() => onChange({ city: null, wh: null })}
       />
       {city && service === "DOORS" && (
-        <StreetFields cityRef={city.ref} street={street} setStreet={(s) => onChange({ street: s })} register={register} />
+        <StreetFields cityRef={city.ref} street={street} setStreet={(s) => onChange({ street: s })} houseInput={houseInput} />
       )}
       {city && service !== "DOORS" && (
         <Autocomplete<NpWarehouse>

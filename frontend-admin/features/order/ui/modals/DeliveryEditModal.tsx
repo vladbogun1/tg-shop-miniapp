@@ -109,7 +109,7 @@ export function DeliveryEditModal({
         {isNp && (
           <>
             <RecipientNameFields register={form.register} missing={recipientMissing(order, draft)} />
-            <NpAddressFields value={address} onChange={(p) => setAddress((a) => ({ ...a, ...p }))} register={form.register} />
+            <NpAddressFields value={address} onChange={(p) => setAddress((a) => ({ ...a, ...p }))} houseInput={form.register} />
           </>
         )}
         <p className="text-[12px] text-[var(--text-faint)]">
