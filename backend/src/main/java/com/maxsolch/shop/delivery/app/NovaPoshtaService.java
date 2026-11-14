@@ -40,9 +40,9 @@ public class NovaPoshtaService {
     @Transactional(readOnly = true)
     @Cacheable(value = "npCities", key = "#q == null ? '' : #q.trim().toLowerCase()")
     public List<NpCityDto> searchCities(String q) {
-        List<NovaPoshtaCity> cities = (q == null || q.isBlank())
+        List<NovaPoshtaCity> cities = (q == null || withoutApostrophes(q).isBlank())
                 ? cityRepository.findTop50ByOrderByNameAsc()
-                : cityRepository.searchRanked(q.trim().toLowerCase(java.util.Locale.ROOT));
+                : cityRepository.searchRanked(withoutApostrophes(q.trim().toLowerCase(java.util.Locale.ROOT)));
         return cities.stream()
                 .map(c -> new NpCityDto(c.getRef(), c.getName(), c.getArea()))
                 .toList();
@@ -161,5 +161,10 @@ public class NovaPoshtaService {
     private static NpWarehouseDto toDto(NovaPoshtaWarehouse w) {
         return new NpWarehouseDto(w.getRef(), w.getNumber(), w.getDescription(), w.getType(),
                 categoryOf(w), w.getCityRef(), w.getCityName(), w.getLat(), w.getLng(), w.getMaxWeightKg());
+    }
+
+    /** «Ком'яти», «Ком’яти», «Комʼяти» and «Комяти» are the same village to the person typing. */
+    static String withoutApostrophes(String q) {
+        return q.replace("'", "").replace("’", "").replace("ʼ", "");
     }
 }

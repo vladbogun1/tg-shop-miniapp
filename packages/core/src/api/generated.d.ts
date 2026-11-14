@@ -6260,8 +6260,13 @@ export interface components {
             deliveryMethod?: string;
             items: components["schemas"]["OrderAdminCreateOrderRequestLine"][];
             note?: string;
+            npBuilding?: string;
             npCityName?: string;
             npCityRef?: string;
+            npFlat?: string;
+            npServiceType?: string;
+            npStreetName?: string;
+            npStreetRef?: string;
             npWarehouseName?: string;
             npWarehouseRef?: string;
             paidChannel?: string;

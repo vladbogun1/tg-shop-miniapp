@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.app.CreateOrderCommand;
 import org.springframework.lang.Nullable;
 
 import jakarta.validation.Valid;
@@ -23,12 +24,23 @@ public record AdminCreateOrderRequest(
         String promoCode,
         /** NOVA_POSHTA | PICKUP. */
         String deliveryMethod,
+        /** Nova Poshta: the city and the branch / parcel locker from the directory (refs are required). */
         String npCityRef,
         String npCityName,
         String npWarehouseRef,
         String npWarehouseName,
+        /** WAREHOUSE (default) | POSTOMAT | DOORS. */
+        @Nullable String npServiceType,
+        /** Courier (DOORS): the street (ref blank when typed by hand), building and flat. */
+        @Nullable @Size(max = 64) String npStreetRef,
+        @Nullable @Size(max = 255) String npStreetName,
+        @Nullable @Size(max = 32) String npBuilding,
+        @Nullable @Size(max = 32) String npFlat,
         String paymentOptionId,
-        /** Telegram id of the buyer if known: the order shows in their Mini App and the bot writes to them. */
+        /**
+         * Telegram id of the buyer if known: the bot writes to them, and when they have an account the order is
+         * theirs (it shows in «Мої замовлення» on the site and in the Mini App).
+         */
         Long tgUserId,
         /** Already received (minor units); 0 = nothing yet. */
         @PositiveOrZero long paidMinor,
@@ -37,5 +49,15 @@ public record AdminCreateOrderRequest(
         @Size(max = 500) String note) {
 
     public record Line(@NotBlank String productId, @Nullable String variantId, int quantity) {
+    }
+
+    /** The Nova Poshta service and courier address; null when nothing but a branch was sent (the older form). */
+    @Nullable
+    CreateOrderCommand.NpDetails npDetails() {
+        if (npServiceType == null && npStreetName == null && npBuilding == null) {
+            return null;
+        }
+        return new CreateOrderCommand.NpDetails(npServiceType, npStreetRef, npStreetName, npBuilding, npFlat,
+                null, null, null);
     }
 }

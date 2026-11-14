@@ -40,6 +40,13 @@ public record CreateOrderCommand(
                             String lastName, String firstName, String middleName) {
     }
 
+    /** The same order placed by the given account (its id is the Telegram id) and username. */
+    public CreateOrderCommand withBuyer(Long buyerUserId, String buyerTgUsername) {
+        return new CreateOrderCommand(buyerUserId, tgUserId, buyerTgUsername, items, customerName, phone, comment,
+                promoCode, deliveryMethod, npCityRef, npCityName, npWarehouseRef, npWarehouseName, paymentOptionId,
+                source, giftChoice, np);
+    }
+
     public CreateOrderCommand(Long userId, Long tgUserId, String tgUsername, List<Line> items,
                               String customerName, String phone, String comment, String promoCode,
                               String deliveryMethod, String npCityRef, String npCityName,

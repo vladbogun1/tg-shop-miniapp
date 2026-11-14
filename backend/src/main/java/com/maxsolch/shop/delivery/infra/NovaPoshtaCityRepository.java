@@ -17,18 +17,22 @@ public interface NovaPoshtaCityRepository extends JpaRepository<NovaPoshtaCity, 
      * contains it → only the bracketed region matches; inside each group, more Nova Poshta points
      * first (a proxy for size: Kyiv 8k, Kharkiv 1.8k, a village 1), then by name.
      *
-     * @param q lower-cased, trimmed query
+     * Apostrophes are ignored on both sides: the directory writes «Ком'яти» with ', people type ’, ʼ or nothing.
+     *
+     * @param q lower-cased, trimmed query without apostrophes
      */
     @Query(value = """
             SELECT c.* FROM nova_poshta_cities c
+            JOIN (SELECT ref, REPLACE(REPLACE(REPLACE(LOWER(name), '''', ''), '’', ''), 'ʼ', '') AS nm
+                  FROM nova_poshta_cities) k ON k.ref = c.ref
             LEFT JOIN (SELECT city_ref, COUNT(*) AS n FROM nova_poshta_warehouses GROUP BY city_ref) w
                    ON w.city_ref = c.ref
-            WHERE LOWER(c.name) LIKE CONCAT('%', :q, '%')
+            WHERE k.nm LIKE CONCAT('%', :q, '%')
             ORDER BY
               CASE
-                WHEN LOWER(SUBSTRING_INDEX(c.name, ' (', 1)) = :q THEN 0
-                WHEN LOWER(c.name) LIKE CONCAT(:q, '%') THEN 1
-                WHEN LOWER(SUBSTRING_INDEX(c.name, ' (', 1)) LIKE CONCAT('%', :q, '%') THEN 2
+                WHEN SUBSTRING_INDEX(k.nm, ' (', 1) = :q THEN 0
+                WHEN k.nm LIKE CONCAT(:q, '%') THEN 1
+                WHEN SUBSTRING_INDEX(k.nm, ' (', 1) LIKE CONCAT('%', :q, '%') THEN 2
                 ELSE 3
               END,
               COALESCE(w.n, 0) DESC,

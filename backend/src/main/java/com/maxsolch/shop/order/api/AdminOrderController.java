@@ -196,7 +196,7 @@ public class AdminOrderController {
                         .toList(),
                 req.customerName(), req.phone(), req.comment(), req.promoCode(), req.deliveryMethod(),
                 req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
-                req.paymentOptionId(), OrderSource.ADMIN);
+                req.paymentOptionId(), OrderSource.ADMIN, null, req.npDetails());
         return orderQueryService.toDetail(orders.createByHand(cmd, req.paidMinor(), req.paidChannel(), req.note()));
     }
 

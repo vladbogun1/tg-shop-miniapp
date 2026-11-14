@@ -119,7 +119,7 @@ public class Checkout {
     @Transactional
     public Order createOrder(CreateOrderCommand cmd) {
         // Two orders of one person at once would both see the whole monthly gift limit left: serialise them
-        // on the buyer's row, before anything is read (an admin's manual order has no buyer account).
+        // on the buyer's row, before anything is read (an admin's manual order has one only for a known Telegram id).
         if (cmd.userId() != null) {
             customers.lockForUpdate(cmd.userId());
         }
@@ -290,7 +290,7 @@ public class Checkout {
     @Transactional
     public Order createAdminOrder(CreateOrderCommand cmd, long paidMinor, OrderMoneyMovement.Channel channel,
                                   String adminName, String note) {
-        Order order = createOrder(cmd);
+        Order order = createOrder(ownedByKnownBuyer(cmd));
         order.dropPaymentDeadline();
         orderRepository.save(order);
         if (paidMinor > 0) {
@@ -298,6 +298,21 @@ public class Checkout {
                     note == null || note.isBlank() ? "оплата при ручном заказе" : note);
         }
         return order;
+    }
+
+    /**
+     * A manual order (or an exchange replacement) for a Telegram id that has an account becomes that account's
+     * order: it shows in «Мої замовлення» on the site and in the Mini App, which list orders by account, and counts
+     * toward the buyer's limits like an order they placed. An unknown id stays a contact only (the bot still writes).
+     */
+    private CreateOrderCommand ownedByKnownBuyer(CreateOrderCommand cmd) {
+        if (cmd.userId() != null || cmd.tgUserId() == null) {
+            return cmd;
+        }
+        return customers.findById(cmd.tgUserId())
+                .map(u -> cmd.withBuyer(u.getTelegramUserId(),
+                        cmd.tgUsername() != null ? cmd.tgUsername() : u.getUsername()))
+                .orElse(cmd);
     }
 
     /**
