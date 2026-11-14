@@ -8,7 +8,7 @@ import { serviceLabel } from "../../model/labels";
 import { boxError, type ShipmentForm, type ShipmentMode } from "../../model/shipment-form";
 import type { ShipmentPreview } from "../../model/types";
 import { Notice } from "../parts";
-import { CodAndDocuments, Estimate, MoneyFields, ParcelFields, RecipientFields, SenderChips, UnpaidCheck, type SetForm } from "./fields";
+import { CodAndDocuments, Estimate, MoneyFields, PackedSeats, ParcelFields, RecipientFields, SenderChips, UnpaidCheck, type SetForm } from "./fields";
 
 
 
@@ -26,7 +26,7 @@ function Destination({ p }: { p: ShipmentPreview }) {
   );
 }
 
-function ModeNotice({ mode, p }: { mode: ShipmentMode; p: ShipmentPreview }) {
+function ModeNotice({ mode, p, seats }: { mode: ShipmentMode; p: ShipmentPreview; seats: boolean }) {
   const existing = p.existing;
   if (!existing) return null;
   if (mode === "create") {
@@ -41,7 +41,10 @@ function ModeNotice({ mode, p }: { mode: ShipmentMode; p: ShipmentPreview }) {
     );
   }
   return mode === "remake" ? (
-    <Notice tone="warn">Вес и коробка заново посчитаны по заказу. Этикетку ещё не печатали — номер ТТН останется тем же.</Notice>
+    <Notice tone="warn">
+      {seats ? "Места остаются как упаковали." : "Вес и коробка заново посчитаны по заказу."} Этикетку ещё не печатали — номер ТТН останется
+      тем же.
+    </Notice>
   ) : null;
 }
 
@@ -65,13 +68,17 @@ export function ShipmentBody({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Destination p={p} />
-      <ModeNotice mode={mode} p={p} />
+      <ModeNotice mode={mode} p={p} seats={!!form.seats} />
       {p.problems.length > 0 && <Notice tone="danger" title="Нельзя создать ТТН" items={p.problems} />}
       {p.warnings.length > 0 && <Notice tone="warn" title="Обратите внимание" items={p.warnings} />}
       {loadError && <Notice tone="danger">{loadError}</Notice>}
       <RecipientFields form={form} set={set} />
       <SenderChips form={form} set={set} warehouses={p.senderWarehouses} />
-      <ParcelFields form={form} set={set} initial={initial} presets={p.presets} boxError={boxError(form)} />
+      {form.seats ? (
+        <PackedSeats seats={form.seats} />
+      ) : (
+        <ParcelFields form={form} set={set} initial={initial} presets={p.presets} boxError={boxError(form)} />
+      )}
       <MoneyFields form={form} set={set} />
       <CodAndDocuments form={form} set={set} p={p} />
       <Input

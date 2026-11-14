@@ -6,8 +6,9 @@ import { money } from "@shop/core/money";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { boxText, cmText, intText, weightText } from "../../model/format";
+import { placesWord } from "../../model/packing";
 import { documentsOffered, presetMatches, presetPatch, type ShipmentForm } from "../../model/shipment-form";
-import type { BoxPreset, SenderWarehouse, ShipmentPreview } from "../../model/types";
+import type { BoxPreset, ParcelSeat, SenderWarehouse, ShipmentPreview } from "../../model/types";
 import { Chip, Notice } from "../parts";
 
 /** Правка части формы. */
@@ -83,6 +84,26 @@ function Seats({ initial }: { initial: ShipmentPreview }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Многоместная ТТН: места видны, но меняются там, где их упаковали, — здесь уйдут в НП те же. */
+export function PackedSeats({ seats }: { seats: ParcelSeat[] }) {
+  const total = seats.reduce((sum, s) => sum + s.weightG, 0);
+  return (
+    <div className="card-2 flex min-w-0 flex-col gap-1.5 px-3.5 py-3">
+      <div className="break-words text-[14px] font-semibold text-[var(--text)]">
+        {placesWord(seats.length)} в одной ТТН · {weightText(total)}
+      </div>
+      <ul className="flex min-w-0 flex-col gap-1 text-[12.5px] text-[var(--text-muted)]">
+        {seats.map((s, i) => (
+          <li key={i} className="min-w-0 break-words">
+            Место {i + 1}: {s.box || "своя упаковка"} · {boxText(s.lengthMm, s.widthMm, s.heightMm)} · {weightText(s.weightG)}
+          </li>
+        ))}
+      </ul>
+      <p className="text-[12px] text-[var(--text-faint)]">Коробки и вес мест меняются в блоке упаковки: «Переупаковать» → «Упаковано».</p>
+    </div>
   );
 }
 

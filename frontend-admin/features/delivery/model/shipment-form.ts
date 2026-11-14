@@ -4,7 +4,7 @@
  */
 import { toMajor, toMinor } from "@shop/core/money";
 import { cmText, intOrNull, intText, toMm } from "./format";
-import type { BoxPreset, Shipment, ShipmentOptions, ShipmentPreview } from "./types";
+import type { BoxPreset, ParcelSeat, Shipment, ShipmentOptions, ShipmentPreview } from "./types";
 
 export type ShipmentMode = "create" | "edit" | "remake";
 
@@ -24,6 +24,15 @@ export interface ShipmentForm {
   middle: string;
   allowUnpaid: boolean;
   documents: boolean;
+  /** Места многоместной ТТН как упаковали: уходят в НП снова как есть (вес и стороны формы тогда не правятся). */
+  seats: ParcelSeat[] | null;
+}
+
+/** Места уже созданной ТТН, если их два и больше; иначе null — одно место правится полями формы. */
+export function existingSeats(p: Pick<ShipmentPreview, "existing">): ParcelSeat[] | null {
+  const seats = p.existing?.packing?.seats ?? [];
+  // box у места бывает null (своя упаковка без названия) — сервер принимает и так.
+  return seats.length > 1 ? seats.map((s) => ({ ...s, box: s.box as string })) : null;
 }
 
 /** Правка (не пересоздание) начинает с веса и коробки самой ТТН; предпросмотр считает их по заказу. */
@@ -50,6 +59,7 @@ export function formFrom(p: ShipmentPreview, keepExisting: boolean): ShipmentFor
     middle: p.recipientMiddleName ?? "",
     allowUnpaid: false,
     documents: !!p.parcel.documents,
+    seats: existingSeats(p),
   };
 }
 
@@ -83,6 +93,7 @@ export function toOptions(f: ShipmentForm): ShipmentOptions {
     recipientMiddleName: blankToNull(f.middle),
     allowUnpaid: f.allowUnpaid,
     documents: f.documents,
+    seats: f.seats,
   };
 }
 

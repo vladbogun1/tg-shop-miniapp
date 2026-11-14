@@ -26,6 +26,14 @@ const PREVIEW_DEBOUNCE_MS = 500;
 const TITLE: Record<ShipmentMode, string> = { create: "Создать ТТН", edit: "Изменить ТТН", remake: "Пересоздать ТТН" };
 const SUBMIT: Record<ShipmentMode, string> = { create: "Создать ТТН", edit: "Сохранить ТТН", remake: "Пересоздать ТТН" };
 
+/**
+ * Опции, которые уже посчитал первый предпросмотр: пока форма такая же, второй запрос не нужен. Правка (и места
+ * многоместной ТТН) начинает с коробки самой ТТН, которую первый предпросмотр не учитывал, — тогда пересчитать сразу.
+ */
+function baselineOf(base: ShipmentForm | null, mode: ShipmentMode): string {
+  return base && mode !== "edit" && !base.seats ? JSON.stringify(toOptions(base)) : "";
+}
+
 /** Форма поверх значений по умолчанию + живой предпросмотр именно этой формы. */
 function useShipmentDraft(orderId: string, mode: ShipmentMode) {
   const initialQ = useShipmentPreviewQuery(orderId, DEFAULTS, true);
@@ -35,8 +43,7 @@ function useShipmentDraft(orderId: string, mode: ShipmentMode) {
   const form = edited ?? base;
 
   const optionsJson = form ? JSON.stringify(toOptions(form)) : DEFAULTS;
-  // Правка начинает с коробки самой ТТН, которую первый предпросмотр не учитывал: пересчитать сразу.
-  const baselineJson = base && mode !== "edit" ? JSON.stringify(toOptions(base)) : "";
+  const baselineJson = baselineOf(base, mode);
   const debounced = useDebounced(optionsJson, PREVIEW_DEBOUNCE_MS);
   const live = !!form && debounced !== baselineJson;
   const liveQ = useShipmentPreviewQuery(orderId, debounced, live && !!initial && !boxError(form));

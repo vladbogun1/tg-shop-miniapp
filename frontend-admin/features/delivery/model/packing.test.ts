@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxSizeText, choiceByLabel, choiceLabel, cm, confirmBody, confirmMessage, npHasParcel, ownBoxBody, placesBody, placesWord, remeasureText } from "./packing";
+import { boxSizeText, choiceByLabel, choiceLabel, cm, confirmBody, confirmMessage, declaredChargeableG, npHasParcel, ownBoxBody, placesBody, placesWord, remeasureText } from "./packing";
 import type { NpBox } from "./types";
 
 const npBox = (over: Partial<NpBox>): NpBox => ({
@@ -122,5 +122,17 @@ describe("своя коробка", () => {
   it("без имени или сторон — null", () => {
     expect(ownBoxBody({ name: "", l: "45", w: "15", h: "20", folds: "" })).toBeNull();
     expect(ownBoxBody({ name: "x", l: "45", w: "", h: "20", folds: "" })).toBeNull();
+  });
+});
+
+describe("перемер многоместной ТТН", () => {
+  it("каждое место — свой больший вес, места складываются (НП считает их отдельно)", () => {
+    const seats = [
+      { weightG: 1400, lengthMm: 100, widthMm: 100, heightMm: 100 },
+      { weightG: 100, lengthMm: 400, widthMm: 300, heightMm: 50 },
+    ];
+    // 1400 г + объёмные 1500 г; по первому месту было бы max(1500, 250) = 1500.
+    expect(declaredChargeableG({ weightG: 1500, lengthMm: 100, widthMm: 100, heightMm: 100, seats })).toBe(2900);
+    expect(declaredChargeableG({ weightG: 1500, lengthMm: 100, widthMm: 100, heightMm: 100, seats: [seats[0]] })).toBe(1500);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { boxError, documentsOffered, formFrom, goodsWeightG, presetMatches, presetPatch, submitBlocked, successMessage, toOptions } from "./shipment-form";
-import type { Shipment, ShipmentPreview } from "./types";
+import type { Packing, Shipment, ShipmentPreview } from "./types";
 
 const shipment = (over: Partial<Shipment> = {}): Shipment => ({
   ttn: "1",
@@ -84,6 +84,20 @@ describe("форма ТТН", () => {
     const p = preview({ existing: shipment({ weightG: 900, lengthMm: 300, widthMm: 200, heightMm: 100 }) });
     expect(formFrom(p, true)).toMatchObject({ weight: "900", l: "30" });
     expect(formFrom(p, false)).toMatchObject({ weight: "600", l: "20" });
+  });
+  it("многоместная ТТН: места из самой ТТН уходят снова, одно место — нет", () => {
+    const seats = [
+      { weightG: 850, lengthMm: 400, widthMm: 240, heightMm: 80, box: "Коробка 5 кг · 8 см" },
+      { weightG: 700, lengthMm: 490, widthMm: 420, heightMm: 10, box: null },
+    ];
+    const packing = { seats } as unknown as Packing;
+    const p = preview({ existing: shipment({ weightG: 1550, lengthMm: 400, widthMm: 240, heightMm: 80, packing }) });
+    expect(formFrom(p, true).seats).toHaveLength(2);
+    expect(formFrom(p, false).seats).toHaveLength(2); // «Пересоздать» тоже не сжимает места
+    expect(toOptions(formFrom(p, true)).seats?.[1]).toMatchObject({ weightG: 700, lengthMm: 490 });
+    const one = preview({ existing: shipment({ packing: { seats: [seats[0]] } as unknown as Packing }) });
+    expect(formFrom(one, true).seats).toBeNull();
+    expect(toOptions(formFrom(preview(), false)).seats).toBeNull();
   });
   it("частичная коробка — ошибка и стороны не уходят", () => {
     const f = { ...formFrom(preview(), false), h: "" };

@@ -8158,6 +8158,7 @@ export interface components {
             npWeightG: number;
             orderId: string;
             remeasured: boolean;
+            seats: components["schemas"]["DeliveryParcelSeat"][];
             shortId: string;
             stage: string;
             ttn: string;
@@ -9984,6 +9985,17 @@ export interface components {
             /** @enum {string} */
             type: "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
         };
+        OrderOrderShipmentViewSeat: {
+            box: string | null;
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            /** Format: int32 */
+            weightG: number;
+            /** Format: int32 */
+            widthMm: number;
+        };
         OrderProfitDto: {
             complete: boolean;
             /** Format: int64 */
@@ -10053,6 +10065,7 @@ export interface components {
             /** Format: int32 */
             npWeightG: number | null;
             printed: boolean;
+            seats: components["schemas"]["OrderOrderShipmentViewSeat"][] | null;
             statusCode: string | null;
             unconfirmed: boolean;
             waiting: string | null;

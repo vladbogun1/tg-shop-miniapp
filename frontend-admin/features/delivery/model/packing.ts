@@ -183,13 +183,23 @@ export interface Declared {
   widthMm?: number | null;
   heightMm?: number | null;
   deliveryCostMinor?: number | null;
+  /** Места многоместной ТТН (два и больше); null — одно место по полям выше. */
+  seats?: { weightG: number; lengthMm: number; widthMm: number; heightMm: number }[] | null;
 }
 
-/** Наш платный вес: больший из заявленного и объёмного по нашим сторонам. */
+const volumeG = (l: number, w: number, h: number): number => Math.round((l * w * h) / VOLUME_DIVISOR);
+
+/**
+ * Наш платный вес: больший из заявленного и объёмного по нашим сторонам. Несколько мест: НП считает каждое место
+ * отдельно (два места по 90 ₴ — 180 ₴), так что у каждого свой больший вес, и они складываются.
+ */
 export function declaredChargeableG(d: Declared): number | null {
+  if (d.seats && d.seats.length > 1) {
+    return d.seats.reduce((sum, s) => sum + Math.max(s.weightG, volumeG(s.lengthMm, s.widthMm, s.heightMm)), 0);
+  }
   const w = d.weightG ?? null;
   if (!d.lengthMm || !d.widthMm || !d.heightMm) return w;
-  return Math.max(w ?? 0, Math.round((d.lengthMm * d.widthMm * d.heightMm) / VOLUME_DIVISOR));
+  return Math.max(w ?? 0, volumeG(d.lengthMm, d.widthMm, d.heightMm));
 }
 
 const off = (a: number | null | undefined, b: number | null | undefined): boolean =>

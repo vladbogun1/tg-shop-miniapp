@@ -10,7 +10,7 @@ import type { Packing, Shipment } from "../../model/types";
 import { PackBox } from "./PackBox";
 
 export function NpMeasure({ p, s }: { p: Packing; s: Shipment }) {
-  const r = remeasureText(p, s);
+  const r = remeasureText(p, { ...s, seats: p.seats });
   if (!r) return null;
   return (
     <p
