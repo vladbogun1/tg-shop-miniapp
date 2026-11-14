@@ -4,6 +4,8 @@ import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.delivery.app.NovaPoshtaService;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
+import com.maxsolch.shop.order.app.CustomerOrders;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderSource;
@@ -26,6 +28,8 @@ class AdminManualOrderIT extends AbstractMysqlIT {
     Checkout checkout;
     @Autowired
     NovaPoshtaService novaPoshta;
+    @Autowired
+    CustomerOrders customerOrders;
 
     @Test
     void anOrderForAKnownTelegramIdBelongsToThatAccount() {
@@ -40,6 +44,9 @@ class AdminManualOrderIT extends AbstractMysqlIT {
         assertThat(((Number) row.get("user_id")).longValue()).isEqualTo(tg);
         assertThat(((Number) row.get("tg_user_id")).longValue()).isEqualTo(tg);
         assertThat(row.get("tg_username")).isEqualTo("known_buyer");
+        // «Мої замовлення»: in his list, and his to open.
+        assertThat(customerOrders.activeOf(tg)).extracting(x -> UuidUtil.toString(x.getId())).contains(UuidUtil.toString(o.getId()));
+        assertThat(customerOrders.ownedBy(UuidUtil.toString(o.getId()), tg).getId()).isEqualTo(o.getId());
     }
 
     @Test
