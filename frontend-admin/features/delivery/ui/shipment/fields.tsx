@@ -87,6 +87,13 @@ function Seats({ initial }: { initial: ShipmentPreview }) {
   );
 }
 
+/** Название места и его стороны; у своей коробки они уже в названии («Стрейч 49×42×1 см») — второй раз не пишем. */
+function seatBox(s: ParcelSeat): string {
+  const size = boxText(s.lengthMm, s.widthMm, s.heightMm);
+  const name = s.box || "своя упаковка";
+  return name.includes(size) ? name : `${name} · ${size}`;
+}
+
 /** Многоместная ТТН: места видны, но меняются там, где их упаковали, — здесь уйдут в НП те же. */
 export function PackedSeats({ seats }: { seats: ParcelSeat[] }) {
   const total = seats.reduce((sum, s) => sum + s.weightG, 0);
@@ -98,7 +105,7 @@ export function PackedSeats({ seats }: { seats: ParcelSeat[] }) {
       <ul className="flex min-w-0 flex-col gap-1 text-[12.5px] text-[var(--text-muted)]">
         {seats.map((s, i) => (
           <li key={i} className="min-w-0 break-words">
-            Место {i + 1}: {s.box || "своя упаковка"} · {boxText(s.lengthMm, s.widthMm, s.heightMm)} · {weightText(s.weightG)}
+            Место {i + 1}: {seatBox(s)} · {weightText(s.weightG)}
           </li>
         ))}
       </ul>
