@@ -75,7 +75,7 @@ export function PrizeHeader({ row, perMonth }: { row: Row; perMonth: number }) {
   );
 }
 
-/** The prize's real chance, %: typed, applied on blur / Enter (the others make room). */
+/** The prize's chance as set, %: typed, applied on blur / Enter (the others make room). */
 export function ChanceField({
   rowKey,
   chance,

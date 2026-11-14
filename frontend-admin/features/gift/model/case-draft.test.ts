@@ -3,11 +3,12 @@ import {
   addRow,
   canDrop,
   changes,
-  chanceOf,
+  inPool,
   defaultDiscountUah,
   fromServer,
   lanesOf,
-  liveTotal,
+  poolTotal,
+  realChances,
   normalize,
   parsePct,
   removeRow,
@@ -45,7 +46,7 @@ function row(over: Partial<Row> = {}): Row {
   };
 }
 
-const sum = (rows: Row[]) => rows.reduce((s, r) => s + (canDrop(r) ? r.weight : 0), 0);
+const sum = (rows: Row[]) => rows.reduce((s, r) => s + (inPool(r) ? r.weight : 0), 0);
 
 describe("canDrop", () => {
   it("товар выпадает только в наличии, видимый, включённый и с весом", () => {
@@ -69,11 +70,17 @@ describe("normalize", () => {
     expect(sum(rows)).toBe(TOTAL_WEIGHT);
   });
 
-  it("сохраняет пропорции и не трогает призы, которые не могут выпасть", () => {
-    const dead = row({ weight: 500, stock: 0 });
-    const rows = normalize([row({ weight: 1 }), row({ weight: 3 }), dead]);
+  it("сохраняет пропорции и не трогает выключенные призы", () => {
+    const off = row({ weight: 500, active: false });
+    const rows = normalize([row({ weight: 1 }), row({ weight: 3 }), off]);
     expect(rows[1].weight).toBe(rows[0].weight * 3);
     expect(rows[2].weight).toBe(500);
+  });
+
+  it("закончившийся товар остаётся в 100 % со своим шансом", () => {
+    const rows = normalize([row({ weight: 1 }), row({ weight: 1, stock: 0 })]);
+    expect(sum(rows)).toBe(TOTAL_WEIGHT);
+    expect(rows[1].weight).toBe(TOTAL_WEIGHT / 2);
   });
 
   it("делит поровну, если у всех живых вес 0 после выключения остальных", () => {
@@ -133,9 +140,17 @@ describe("addRow / removeRow", () => {
     expect(sum(next)).toBe(TOTAL_WEIGHT);
   });
 
-  it("приз без наличия добавляется без пересчёта остальных", () => {
+  it("товар без наличия тоже получает шанс, остальные уступают", () => {
     const rows = normalize([row({ weight: 1 })]);
-    const next = addRow(rows, row({ stock: 0 }));
+    const added = row({ stock: 0 });
+    const next = addRow(rows, added);
+    expect(next.find((r) => r.key === added.key)!.weight).toBe(15 * WEIGHT_PER_PERCENT);
+    expect(sum(next)).toBe(TOTAL_WEIGHT);
+  });
+
+  it("выключенный приз добавляется без пересчёта остальных", () => {
+    const rows = normalize([row({ weight: 1 })]);
+    const next = addRow(rows, row({ active: false }));
     expect(next[0].weight).toBe(rows[0].weight);
   });
 
@@ -147,13 +162,47 @@ describe("addRow / removeRow", () => {
   });
 });
 
-describe("chanceOf / liveTotal", () => {
-  it("шанс — доля веса среди тех, что могут выпасть", () => {
+describe("realChances / poolTotal", () => {
+  const disc = (weight: number, discountUah: number) => row({ kind: "DISCOUNT", productId: null, stock: 0, discountUah, weight });
+
+  it("шанс закончившегося товара уходит скидкам в их пропорции, товары в наличии держат свой", () => {
+    // 14.11.2026: глайды 30 % кончились — коврик держит 5 %, скидки 45 : 20 делят 95 %.
+    const glides = row({ weight: 30, stock: 0 });
+    const mat = row({ weight: 5 });
+    const d1 = disc(45, 100);
+    const d2 = disc(20, 150);
+    const rows = [glides, mat, d1, d2];
+    expect(poolTotal(rows)).toBe(100);
+    const c = realChances(rows);
+    expect(c.get(glides.key)).toBe(0);
+    expect(c.get(mat.key)).toBeCloseTo(5);
+    expect(c.get(d1.key)! + c.get(d2.key)!).toBeCloseTo(95);
+    expect(c.get(d1.key)! / c.get(d2.key)!).toBeCloseTo(45 / 20);
+  });
+
+  it("всё в наличии — шанс как задан", () => {
+    const rows = [row({ weight: 25 }), disc(75, 100)];
+    const c = realChances(rows);
+    expect(c.get(rows[0].key)).toBe(25);
+    expect(c.get(rows[1].key)).toBe(75);
+  });
+
+  it("без скидок шанс закончившегося делят оставшиеся товары", () => {
     const rows = [row({ weight: 25 }), row({ weight: 75 }), row({ weight: 100, stock: 0 })];
-    const total = liveTotal(rows);
-    expect(total).toBe(100);
-    expect(chanceOf(rows[0], total)).toBe(25);
-    expect(chanceOf(rows[2], total)).toBe(0);
+    const c = realChances(rows);
+    expect(c.get(rows[0].key)).toBe(25);
+    expect(c.get(rows[2].key)).toBe(0);
+  });
+
+  it("summarize: шанс как задан, реальный и доля закончившихся", () => {
+    const glides = row({ weight: 30, stock: 0 });
+    const d = disc(70, 100);
+    const s = summarize([glides, d], null);
+    expect(s.setting.get(glides.key)).toBeCloseTo(30);
+    expect(s.chance.get(glides.key)).toBe(0);
+    expect(s.chance.get(d.key)).toBeCloseTo(100);
+    expect(s.soldOutShare).toBeCloseTo(30);
+    expect(s.live).toBe(1);
   });
 });
 

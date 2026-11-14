@@ -12,7 +12,7 @@ import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { ProductPickModal } from "@/features/product";
-import type { Row } from "../../model/case-draft";
+import { fmtPct, type Row } from "../../model/case-draft";
 import { catalogItem } from "../../model/case-rows";
 import { CASE_RARITY_LABEL } from "../../model/labels";
 import type { DraftItem } from "../../model/types";
@@ -26,6 +26,8 @@ export function CasePrizeModal({
   tier,
   row,
   chance,
+  now,
+  toDiscounts,
   perMonth,
   usedProducts,
   onChance,
@@ -37,8 +39,12 @@ export function CasePrizeModal({
   onClose: () => void;
   tier: CaseTier;
   row: Row | null;
-  /** Real chance, %. */
+  /** Chance as set, %. */
   chance: number;
+  /** Real chance now, % (a product out of stock gives its chance to the discounts). */
+  now: number;
+  /** A sold-out product's chance goes to the discounts (false: there are none, it goes to the products left). */
+  toDiscounts: boolean;
   perMonth: number;
   /** Products already in this tier's draft (not offered as a replacement). */
   usedProducts: string[];
@@ -58,13 +64,15 @@ export function CasePrizeModal({
         <PrizeHeader row={row} perMonth={perMonth} />
 
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-          <ChanceField rowKey={row.key} chance={chance} disabled={!row.active || cantDrop} onChance={onChance} />
+          <ChanceField rowKey={row.key} chance={chance} disabled={!row.active} onChance={onChance} />
           <div className="flex min-w-0 flex-col gap-1">
             <span className="field-label">Редкость</span>
             <Select<CaseRarity> value={row.rarity} options={RARITY_OPTIONS} onChange={(r) => r !== row.rarity && onPatch({ rarity: r })} />
           </div>
           {!isProduct && <DiscountField row={row} onPatch={onPatch} />}
         </div>
+
+        {row.active && Math.abs(now - chance) >= 0.005 && <NowHint cantDrop={cantDrop} now={now} toDiscounts={toDiscounts} />}
 
         <PrizeSwitches row={row} onPatch={onPatch} />
 
@@ -91,5 +99,17 @@ export function CasePrizeModal({
         }}
       />
     </>
+  );
+}
+
+/** Why the real chance differs from the one set: the product is out of stock, or others are and their chance comes here. */
+function NowHint({ cantDrop, now, toDiscounts }: { cantDrop: boolean; now: number; toDiscounts: boolean }) {
+  const to = toDiscounts ? "скидками" : "другими товарами";
+  return (
+    <p className="mt-2 text-[12px] leading-snug text-[var(--text-muted)]">
+      {cantDrop
+        ? `Товара нет в наличии — пока он не вернётся, его шанс выпадает ${to}.`
+        : `Сейчас выпадает с шансом ${fmtPct(now)} % — сюда добавлен шанс закончившихся товаров.`}
+    </p>
   );
 }

@@ -6,7 +6,7 @@ import { CASE_RARITY_COLOR, type CaseRarity } from "@shop/core/giftcase";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
-import { canDrop, fmtPct, parsePct, type Row, type Summary } from "../../model/case-draft";
+import { fmtPct, inPool, parsePct, type Row, type Summary } from "../../model/case-draft";
 import { CASE_RARITY_LABEL } from "../../model/labels";
 import { DiscountBadge } from "./PrizeParts";
 
@@ -30,7 +30,7 @@ export function CaseLane({
 }) {
   const color = CASE_RARITY_COLOR[rarity];
   const share = sum.share[rarity];
-  const live = rows.some(canDrop);
+  const live = rows.some(inPool);
   return (
     <section
       className="card-2 min-w-0 border-l-[3px] p-2.5"
@@ -56,7 +56,7 @@ export function CaseLane({
       {rows.length > 0 && (
         <ul className="mt-2 grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-2">
           {rows.map((r) => (
-            <PrizeRow key={r.key} r={r} chance={sum.chance.get(r.key) ?? 0} perMonth={sum.perMonth.get(r.key) ?? 0} onOpen={() => onOpen(r.key)} />
+            <PrizeRow key={r.key} r={r} chance={sum.setting.get(r.key) ?? 0} now={sum.chance.get(r.key) ?? 0} perMonth={sum.perMonth.get(r.key) ?? 0} onOpen={() => onOpen(r.key)} />
           ))}
         </ul>
       )}
@@ -64,7 +64,8 @@ export function CaseLane({
   );
 }
 
-function PrizeRow({ r, chance, perMonth, onOpen }: { r: Row; chance: number; perMonth: number; onOpen: () => void }) {
+/** `chance` — as set, `now` — real (a product out of stock gives its chance to the discounts). */
+function PrizeRow({ r, chance, now, perMonth, onOpen }: { r: Row; chance: number; now: number; perMonth: number; onOpen: () => void }) {
   const isProduct = r.kind === "PRODUCT";
   const cantDrop = isProduct && (r.stock <= 0 || !r.productActive);
   const short = isProduct && !cantDrop && perMonth > r.stock;
@@ -99,6 +100,7 @@ function PrizeRow({ r, chance, perMonth, onOpen }: { r: Row; chance: number; per
           <span className={cn("tabular block font-display text-[14px] font-bold leading-tight", chance > 0 ? "text-[var(--ink)]" : "text-[var(--text-faint)]")}>
             {fmtPct(chance)} %
           </span>
+          {Math.abs(now - chance) >= 0.005 && <span className="tabular block text-[10.5px] leading-tight text-[var(--text-muted)]">сейчас {fmtPct(now)} %</span>}
           {perMonth >= 0.05 && <span className="tabular block text-[10.5px] leading-tight text-[var(--text-faint)]">≈{fmtPct(perMonth, 1)}/мес</span>}
         </span>
       </button>

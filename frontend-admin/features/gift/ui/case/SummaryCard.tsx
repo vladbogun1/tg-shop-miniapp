@@ -13,6 +13,9 @@ export function SummaryCard({ t, sum, warnings }: { t: GiftTierAdmin | null; sum
   const costTone = sum.costShare <= 70 ? "var(--ok,#3ecf8e)" : sum.costShare <= 100 ? "var(--warn)" : "var(--danger-ink)";
   const shares = (Object.entries(sum.share) as [CaseRarity, number][]).filter(([, v]) => v > 0);
   const notes = [
+    ...(sum.soldOutShare >= 0.01
+      ? [`Нет в наличии товаров на ${fmtPct(sum.soldOutShare, 1)} % шанса — пока их нет, этот шанс выпадает ${sum.hasDiscounts ? "скидками" : "другими товарами"}`]
+      : []),
     ...warnings,
     ...sum.shortStock.map((r) => `${r.title}: ≈ ${fmtPct(sum.perMonth.get(r.key) ?? 0, 1)} в месяц, на складе ${r.stock}`),
   ];

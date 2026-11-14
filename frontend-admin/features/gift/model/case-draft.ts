@@ -1,7 +1,8 @@
 /**
  * The case builder's draft (docs/GIFT-CASE.md, «Конструктор»): the tier's prizes edited locally and
- * published at once (PUT /api/admin/gift/tiers/{tier}/items). Chances are kept summing to 100 % over the
- * prizes that can drop: changing one chance (or a rarity's share) rescales the others in proportion.
+ * published at once (PUT /api/admin/gift/tiers/{tier}/items). Chances as set are kept summing to 100 % over the
+ * prizes in the case, products out of stock too: changing one chance (or a rarity's share) rescales the others
+ * in proportion. A product out of stock gives its chance to the discounts until it is back ({@link realChances}).
  *
  * Money of the summary: no cost price in the shop, so a product prize costs price × (1 − margin) and a
  * discount prize its full amount (a percent one — that percent of the threshold).
@@ -64,24 +65,51 @@ export function toDraft(rows: Row[]): CaseDraftItem[] {
   }));
 }
 
-/** Can drop now: switched on, chance > 0, a discount with a value / a product in stock and visible. */
-export function canDrop(r: Row): boolean {
+/**
+ * In the case: switched on, chance > 0, a discount with a value / a product. Its chance counts towards the 100 %
+ * even while the product is out of stock — then the chance goes to the discounts (the server's CasePrizeRules.inPool).
+ */
+export function inPool(r: Row): boolean {
   if (!r.active || r.weight <= 0) return false;
-  return r.kind === "DISCOUNT" ? r.discountPercent > 0 || r.discountUah > 0 : r.stock > 0 && r.productActive;
+  return r.kind === "DISCOUNT" ? r.discountPercent > 0 || r.discountUah > 0 : r.productId != null;
 }
 
-export function liveTotal(rows: Row[]): number {
-  return rows.reduce((s, r) => s + (canDrop(r) ? r.weight : 0), 0);
+/** Can drop now: in the case and, for a product, in stock and visible. */
+export function canDrop(r: Row): boolean {
+  return inPool(r) && (r.kind === "DISCOUNT" || (r.stock > 0 && r.productActive));
 }
 
-/** Real chance, % — as the server draws (over the prizes that can drop). */
-export function chanceOf(r: Row, total: number): number {
-  return canDrop(r) && total > 0 ? ratioToPercent(r.weight, total) : 0;
+/** Sum of the weights of the prizes in the case (100 % as set). */
+export function poolTotal(rows: Row[]): number {
+  return rows.reduce((s, r) => s + (inPool(r) ? r.weight : 0), 0);
 }
 
-/** The live prizes except `keep` are rescaled so the live sum is 100 %. */
+/**
+ * Real chance of every prize, % — as the server draws (GiftCaseDraw.liveWeights): a product in stock keeps its
+ * chance as set, a product out of stock gives it to the discounts in their ratio. Without discounts it goes
+ * to the products left (the old rule).
+ */
+export function realChances(rows: Row[]): Map<string, number> {
+  const out = new Map<string, number>();
+  const pool = rows.filter(inPool);
+  const total = poolTotal(rows);
+  const discounts = pool.filter((r) => r.kind === "DISCOUNT").reduce((s, r) => s + r.weight, 0);
+  const live = pool.filter(canDrop).reduce((s, r) => s + r.weight, 0);
+  for (const r of rows) {
+    let c = 0;
+    if (canDrop(r) && discounts > 0) {
+      c = r.kind === "DISCOUNT" ? ratioToPercent(r.weight * (total - live + discounts), discounts * total) : ratioToPercent(r.weight, total);
+    } else if (canDrop(r) && live > 0) {
+      c = ratioToPercent(r.weight, live);
+    }
+    out.set(r.key, c);
+  }
+  return out;
+}
+
+/** The prizes in the case except `keep` are rescaled so their sum is 100 %. */
 export function normalize(rows: Row[], keep: Set<string> = new Set()): Row[] {
-  const live = rows.filter(canDrop);
+  const live = rows.filter(inPool);
   const fixed = live.filter((r) => keep.has(r.key)).reduce((s, r) => s + r.weight, 0);
   const free = live.filter((r) => !keep.has(r.key));
   if (free.length === 0) return rows;
@@ -101,12 +129,12 @@ export function setChance(rows: Row[], key: string, percent: number): Row[] {
   const w = Math.round(Math.min(100, Math.max(0, percent)) * WEIGHT_PER_PERCENT);
   const next = rows.map((r) => (r.key === key ? { ...r, weight: w } : r));
   const row = next.find((r) => r.key === key);
-  return row && canDrop(row) ? normalize(next, new Set([key])) : next;
+  return row && inPool(row) ? normalize(next, new Set([key])) : next;
 }
 
 /** A rarity's total chance → `percent` (its prizes keep their proportions); the other rarities share the rest. */
 export function setLaneShare(rows: Row[], rarity: CaseRarity, percent: number): Row[] {
-  const lane = rows.filter((r) => r.rarity === rarity && canDrop(r));
+  const lane = rows.filter((r) => r.rarity === rarity && inPool(r));
   if (lane.length === 0) return rows;
   const target = Math.round(Math.min(100, Math.max(0, percent)) * WEIGHT_PER_PERCENT);
   const sum = lane.reduce((s, r) => s + r.weight, 0);
@@ -120,7 +148,7 @@ export function setLaneShare(rows: Row[], rarity: CaseRarity, percent: number): 
 /** A new prize with the default chance of its rarity; the others make room. */
 export function addRow(rows: Row[], row: Row): Row[] {
   const next = [...rows, { ...row, weight: Math.round(DEFAULT_CHANCE[row.rarity] * WEIGHT_PER_PERCENT) }];
-  return canDrop(next[next.length - 1]) ? normalize(next, new Set([row.key])) : next;
+  return inPool(next[next.length - 1]) ? normalize(next, new Set([row.key])) : next;
 }
 
 export function removeRow(rows: Row[], key: string): Row[] {
@@ -141,8 +169,17 @@ export function costMinor(r: Row, thresholdMinor: number, marginPercent: number)
 
 export interface Summary {
   total: number;
+  /** key → chance as set, % (the prizes in the case sum to 100). */
+  setting: Map<string, number>;
+  /** key → real chance now, % (what the checkout and «Тест кейса» draw). */
   chance: Map<string, number>;
+  /** Rarity → its chance as set, %. */
   share: Record<CaseRarity, number>;
+  /** Chance as set of the products out of stock (or hidden), % — the discounts drop that much more now. */
+  soldOutShare: number;
+  /** The case has discounts: a sold-out product's chance goes to them (else to the products left). */
+  hasDiscounts: boolean;
+  /** Prizes that can drop now. */
   live: number;
   avgPrizeMinor: number;
   avgCostMinor: number;
@@ -163,12 +200,27 @@ function guaranteedOf(t: GiftTierAdmin | null, thresholdMinor: number): number {
   return t ? guaranteedDiscountMinor(thresholdMinor, t.guaranteedPercent, t.guaranteedMaxUah) : 0;
 }
 
+/** Chances as set: by prize, by rarity, and of the products that can't drop now. */
+function settings(rows: Row[]): Pick<Summary, "total" | "setting" | "share" | "soldOutShare" | "hasDiscounts"> {
+  const total = poolTotal(rows);
+  const setting = new Map<string, number>();
+  const share = Object.fromEntries(CASE_RARITY_ORDER.map((r) => [r, 0])) as Record<CaseRarity, number>;
+  let soldOutShare = 0;
+  for (const r of rows) {
+    const set = inPool(r) && total > 0 ? ratioToPercent(r.weight, total) : 0;
+    setting.set(r.key, set);
+    share[r.rarity] += set;
+    if (set > 0 && !canDrop(r)) soldOutShare += set;
+  }
+  const hasDiscounts = rows.some((r) => r.kind === "DISCOUNT" && canDrop(r));
+  return { total, setting, share, soldOutShare, hasDiscounts };
+}
+
 export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
   const T = toMinor(t?.thresholdUah ?? 0);
   const margin = t?.marginPercent ?? 15;
-  const total = liveTotal(rows);
-  const chance = new Map<string, number>();
-  const share = Object.fromEntries(CASE_RARITY_ORDER.map((r) => [r, 0])) as Record<CaseRarity, number>;
+  const { total, setting, share, soldOutShare, hasDiscounts } = settings(rows);
+  const chance = realChances(rows);
   let avgPrize = 0;
   let avgCost = 0;
   let live = 0;
@@ -176,11 +228,9 @@ export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
   const perMonth = new Map<string, number>();
   const shortStock: Row[] = [];
   for (const r of rows) {
-    const c = chanceOf(r, total);
-    chance.set(r.key, c);
+    const c = chance.get(r.key) ?? 0;
     if (c <= 0) continue;
     live++;
-    share[r.rarity] += c;
     if (r.kind === "PRODUCT") avgPrize += percentToFraction(c) * r.priceMinor;
     avgCost += percentToFraction(c) * costMinor(r, T, margin);
     const pm = percentOf(monthly, c);
@@ -190,8 +240,11 @@ export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
   const marginMinor = percentOf(T, margin);
   return {
     total,
+    setting,
     chance,
     share,
+    soldOutShare,
+    hasDiscounts,
     live,
     avgPrizeMinor: Math.round(avgPrize),
     avgCostMinor: Math.round(avgCost),

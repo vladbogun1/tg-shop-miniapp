@@ -81,6 +81,8 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
   }
 
   const editingRow = rows.find((r) => r.key === editing) ?? null;
+  /** A value of the prize being edited (0 when none). */
+  const ofEditing = (m: Map<string, number>) => (editingRow ? m.get(editingRow.key) ?? 0 : 0);
   const lanes = lanesOf(tier, rows);
   const sorted = sortRows(rows);
   const anyEnabled = tiers.some((t) => t.enabled && t.livePrizes > 0);
@@ -166,8 +168,10 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
         onClose={() => setEditing(null)}
         tier={tier}
         row={editingRow}
-        chance={editingRow ? sum.chance.get(editingRow.key) ?? 0 : 0}
-        perMonth={editingRow ? sum.perMonth.get(editingRow.key) ?? 0 : 0}
+        chance={ofEditing(sum.setting)}
+        now={ofEditing(sum.chance)}
+        toDiscounts={sum.hasDiscounts}
+        perMonth={ofEditing(sum.perMonth)}
         usedProducts={rows.map((r) => r.productId).filter((x): x is string => !!x)}
         onChance={(p) => editingRow && board.setRowChance(editingRow.key, p)}
         onPatch={(patch) => editingRow && board.patchRow(editingRow.key, patch)}
