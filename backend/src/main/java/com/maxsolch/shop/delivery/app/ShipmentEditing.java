@@ -45,8 +45,22 @@ public class ShipmentEditing {
         this.settings = settings;
     }
 
+    /** «Змінити ТТН» / «Пересоздать ТТН» from the order screen. */
     public OrderShipment update(byte[] orderId, Options opt) {
+        refuseOneSeatForSeveral(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId).orElse(null), opt);
         return update(orderId, opt, true);
+    }
+
+    /**
+     * The form edits one parcel: sent over a waybill of several seats it would quietly make them one. Until the form
+     * knows seats, they are changed where they were made — «Переупаковать» and «Упаковано».
+     */
+    static void refuseOneSeatForSeveral(OrderShipment s, Options opt) {
+        boolean ownSeats = opt != null && opt.ownSeats();
+        if (s != null && !ownSeats && PackingPlaces.multi(s.getBoxLabel())) {
+            throw new DomainException.Conflict(DeliveryError.NP_REFUSED, "Это ТТН на несколько мест: здесь она стала бы "
+                    + "одним местом. Меняйте её в блоке упаковки — «Переупаковать» и «Упаковано»");
+        }
     }
 
     /**
@@ -168,9 +182,9 @@ public class ShipmentEditing {
     }
 
     private boolean syncNow(byte[] orderId, OrderShipment s, boolean goodsChanged) {
-        if (!goodsChanged && PackingPlaces.multi(s.getBoxLabel())) {
-            // The row keeps one seat's sides: remade from it, a parcel of several seats would become one.
-            store.syncError(s.getId(), "ТТН на несколько мест не обновляется сама — нажмите «Переупаковать» и «Упаковано»");
+        String manual = manualOnly(s, goodsChanged);
+        if (manual != null) {
+            store.syncError(s.getId(), manual);
             return false;
         }
         // Collect: an explicit «no» stays «no»; otherwise whatever the order still owes.
@@ -196,6 +210,19 @@ public class ShipmentEditing {
             }
             return false;
         }
+    }
+
+    /**
+     * Why the waybill is not remade automatically, or null. Several seats: the row keeps one seat's sides, so remade
+     * from it (goods the same) or from a fresh suggestion (goods changed) the parcel would quietly become one seat.
+     */
+    static String manualOnly(OrderShipment s, boolean goodsChanged) {
+        if (!PackingPlaces.multi(s.getBoxLabel())) {
+            return null;
+        }
+        return goodsChanged
+                ? "Состав заказа изменился, а ТТН на несколько мест — нажмите «Переупаковать» и «Упаковано»"
+                : "ТТН на несколько мест не обновляется сама — нажмите «Переупаковать» и «Упаковано»";
     }
 
     static String reason(RuntimeException e) {

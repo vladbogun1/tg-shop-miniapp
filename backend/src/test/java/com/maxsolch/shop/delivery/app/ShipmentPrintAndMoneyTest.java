@@ -9,6 +9,7 @@ import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.jobs.InMemoryLockProvider;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -23,6 +24,7 @@ import java.util.Optional;
 
 import static com.maxsolch.shop.delivery.app.NpFixtures.ORDER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -91,6 +93,34 @@ class ShipmentPrintAndMoneyTest {
         verify(writer, never()).save(any(), any());
         verify(mockStore, never()).refill(any(), any(), any(), any());
         assertThat(printed.getPrintedAt()).isEqualTo(PRINTED);
+    }
+
+    @Test
+    void aWaybillOfSeveralSeatsIsNeverRemadeAutomaticallyEvenWhenTheGoodsChanged() {
+        OrderShipment multi = NpFixtures.api(ShipmentStage.CREATED);
+        multi.setBoxLabel(PackingPlaces.label(List.of("Коробка 5 кг · 8 см", "Стрейч 49×42×1 см")));
+        OrderShipment one = NpFixtures.api(ShipmentStage.CREATED);
+        one.setBoxLabel("Коробка 5 кг · 8 см");
+
+        assertThat(ShipmentEditing.manualOnly(multi, true)).contains("Состав заказа изменился");
+        assertThat(ShipmentEditing.manualOnly(multi, false)).contains("Переупаковать");
+        assertThat(ShipmentEditing.manualOnly(one, true)).isNull();
+        assertThat(ShipmentEditing.manualOnly(one, false)).isNull();
+    }
+
+    @Test
+    void theTtnFormDoesNotMakeSeveralSeatsOne() {
+        OrderShipment multi = NpFixtures.api(ShipmentStage.CREATED);
+        multi.setBoxLabel(PackingPlaces.label(List.of("Коробка 5 кг · 8 см", "Стрейч 49×42×1 см")));
+        OrderShipment one = NpFixtures.api(ShipmentStage.CREATED);
+        one.setBoxLabel("Коробка 5 кг · 8 см");
+
+        assertThatThrownBy(() -> ShipmentEditing.refuseOneSeatForSeveral(multi, Options.defaults()))
+                .isInstanceOf(DomainException.Conflict.class);
+        assertThatThrownBy(() -> ShipmentEditing.refuseOneSeatForSeveral(multi, null))
+                .isInstanceOf(DomainException.Conflict.class);
+        ShipmentEditing.refuseOneSeatForSeveral(one, Options.defaults());
+        ShipmentEditing.refuseOneSeatForSeveral(null, Options.defaults());
     }
 
     // --- 3
