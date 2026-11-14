@@ -258,6 +258,16 @@ class ShipmentPreparation {
         return s;
     }
 
+    private static final String PACKED = "упаковано в ";
+
+    /**
+     * Seats the packer chose (not the calculator's own split): only these are kept on the waybill and sent again as
+     * they are; a split the calculator made is made again from the goods.
+     */
+    static boolean packedSeats(Parcel p) {
+        return p.seats().size() > 1 && p.source() != null && p.source().startsWith(PACKED);
+    }
+
     /**
      * The dialog always sends the weight and box it shows; only values that differ from the computed parcel are the
      * admin's own — they make one seat of that box. Equal values keep the computed seats.
@@ -265,7 +275,7 @@ class ShipmentPreparation {
     static Parcel withOverrides(Parcel auto, Options o) {
         if (o.ownSeats()) {
             // Packed as several seats (a mat in stretch film + a mouse in a box): exactly those, never «Документи».
-            return Parcel.of(o.seats(), "упаковано в " + o.seats().size() + " места", auto.packMinor());
+            return Parcel.of(o.seats(), PACKED + o.seats().size() + " места", auto.packMinor());
         }
         boolean weightSame = o.weightG() == null || o.weightG() <= 0 || o.weightG() == auto.weightG();
         boolean boxSame = sameOrUnset(o.lengthMm(), auto.lengthMm()) && sameOrUnset(o.widthMm(), auto.widthMm())

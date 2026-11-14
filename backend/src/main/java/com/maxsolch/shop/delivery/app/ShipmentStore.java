@@ -133,7 +133,7 @@ class ShipmentStore {
         s.setLengthMm(p.parcel().lengthMm());
         s.setWidthMm(p.parcel().widthMm());
         s.setHeightMm(p.parcel().heightMm());
-        s.setSeatsJson(PackingPlaces.json(p.parcel()));
+        s.setSeatsJson(ShipmentPreparation.packedSeats(p.parcel()) ? PackingPlaces.json(p.parcel()) : null);
         s.setDeclaredMinor(p.declaredMinor());
         s.setCodMinor(p.collectCod() ? p.codMinor() : 0);
         s.setPayerType("Recipient");

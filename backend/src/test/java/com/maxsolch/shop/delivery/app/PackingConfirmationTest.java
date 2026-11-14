@@ -457,6 +457,36 @@ class PackingConfirmationTest {
     }
 
     @Test
+    void storedSeatsAreComparedSeatBySeat() {
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+        row.setLengthMm(400);
+        row.setWidthMm(240);
+        row.setHeightMm(80);
+        row.setWeightG(1550);
+        List<Parcel.Seat> sent = List.of(new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),
+                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42×1 см"));
+        row.setSeatsJson(PackingPlaces.json(Parcel.of(sent, "t", 0)));   // what the store keeps after the first send
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+        verify(editing, times(1)).updateHeld(eq(ORDER), any());
+
+        // The same total split otherwise between the seats is another parcel for NP.
+        row.setSeatsJson(PackingPlaces.json(Parcel.of(List.of(new Parcel.Seat(900, 400, 240, 80, "Коробка 5 кг · 8 см"),
+                new Parcel.Seat(650, 490, 420, 10, "Стрейч 49×42×1 см")), "t", 0)));
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+        verify(editing, times(2)).updateHeld(eq(ORDER), any());
+    }
+
+    @Test
+    void onlyThePackersSeatsAreKeptNotTheCalculatorsSplit() {
+        List<Parcel.Seat> seats = List.of(new Parcel.Seat(850, 400, 240, 80, "a"), new Parcel.Seat(700, 490, 420, 10, "b"));
+        Parcel calculated = Parcel.of(seats, "по размерам товаров", 0);
+        assertThat(ShipmentPreparation.packedSeats(calculated)).isFalse();
+        Parcel packed = ShipmentPreparation.withOverrides(calculated, new Options(null, null, null, null, null, null, null,
+                null, null, null, null, null, false, null, seats));
+        assertThat(ShipmentPreparation.packedSeats(packed)).isTrue();
+    }
+
+    @Test
     void theCheckOfSeveralSeatsHasNoBagWarningAndSendsTheSeats() {
         when(orders.find(ORDER)).thenReturn(Optional.of(NpFixtures.order(OrderStatus.APPROVED, false, null)));
         when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());

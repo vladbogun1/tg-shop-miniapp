@@ -251,7 +251,12 @@ public class PackingConfirmation {
                 x.setBoxSuggestedSource(s.getBoxSuggestedSource());
             }
         });
-        catalog.saveOwnAll(m.own());
+        try {
+            catalog.saveOwnAll(m.own());
+        } catch (RuntimeException e) {
+            // The waybill and the packing are saved already: a box not kept in «Мои коробки» is no reason to fail them.
+            log.warn("Own boxes of order {} not saved: {}", order.shortId(), e.toString());
+        }
         if (c == null || label.equals(confirmedBefore)) {
             // Confirmed again (a double tap, the weight added later): the goods taught us this box once already.
             // Several seats teach nothing: the memory suggests one box for these goods.
