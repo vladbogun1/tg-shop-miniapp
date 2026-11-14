@@ -6654,6 +6654,7 @@
             "items" : {
               "$ref" : "#/components/schemas/DeliveryParcelSeat"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "shortId" : {

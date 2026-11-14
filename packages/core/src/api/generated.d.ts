@@ -8158,7 +8158,7 @@ export interface components {
             npWeightG: number;
             orderId: string;
             remeasured: boolean;
-            seats: components["schemas"]["DeliveryParcelSeat"][];
+            seats: components["schemas"]["DeliveryParcelSeat"][] | null;
             shortId: string;
             stage: string;
             ttn: string;

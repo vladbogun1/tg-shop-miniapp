@@ -280,8 +280,9 @@ public class PackingConfirmation {
 
     /**
      * The waybill already says this box and weight: nothing to send — above all, a printed one is not remade (its
-     * label on the parcel stays valid). The row keeps the first seat's sides only, so several seats are the same when
-     * their label is; and they are remade after the order changed, as the automatic update leaves them alone.
+     * label on the parcel stays valid). Several seats are the same when their label and each stored seat are (rows from
+     * before the seats were kept have only the label); and they are remade after the order changed, as the automatic
+     * update leaves them alone.
      */
     private static boolean unchanged(OrderShipment s, ShippingOrder order, Measured m) {
         boolean sides = Objects.equals(s.getLengthMm(), m.lengthMm()) && Objects.equals(s.getWidthMm(), m.widthMm())
@@ -289,7 +290,9 @@ public class PackingConfirmation {
         if (m.label() == null) {
             return sides && !PackingPlaces.multi(s);
         }
-        return sides && s.getBoxConfirmedAt() != null && m.label().equals(s.getBoxLabel())
+        List<Parcel.Seat> stored = PackingPlaces.stored(s);
+        boolean seats = stored.isEmpty() || stored.equals(m.seats() == null ? List.of() : m.seats());
+        return sides && seats && s.getBoxConfirmedAt() != null && m.label().equals(s.getBoxLabel())
                 && ShipmentFacts.staleReasons(order, s).isEmpty();
     }
 

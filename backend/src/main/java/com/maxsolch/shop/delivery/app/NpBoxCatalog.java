@@ -85,8 +85,15 @@ public class NpBoxCatalog {
         }
         Set<String> have = new HashSet<>();
         for (NpBox b : boxes.findAllByOrderBySortOrderAscNameAsc()) {
-            have.add(b.getKind() + ":" + b.getLengthMm() + "x" + b.getWidthMm()
-                    + (b.getHeightsMm() == null ? "" : "x" + b.getHeightsMm()));
+            String sides = b.getKind() + ":" + b.getLengthMm() + "x" + b.getWidthMm();
+            if (b.getHeightsMm() == null) {
+                have.add(sides);
+                continue;
+            }
+            // A box of several heights («40,80») has each of them already.
+            for (String h : b.getHeightsMm().split(",")) {
+                have.add(sides + "x" + h.trim());
+            }
         }
         for (OwnBox b : own) {
             if (have.add(b.key())) {

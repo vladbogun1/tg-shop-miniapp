@@ -65,7 +65,7 @@ class NpBoxCatalogTest {
         have.setKind(NpBox.KIND_BOX);
         have.setLengthMm(400);
         have.setWidthMm(240);
-        have.setHeightsMm("80");
+        have.setHeightsMm("40, 80"); // one of its heights
         have.setSortOrder(10);
         when(repo.findAllByOrderBySortOrderAscNameAsc()).thenReturn(List.of(have));
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));

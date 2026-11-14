@@ -7,6 +7,7 @@ import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,7 +62,7 @@ public class PackingJournal {
                       String boxConfirmedBy, Integer weightG, Integer lengthMm, Integer widthMm, Integer heightMm,
                       Long deliveryCostMinor, Integer npWeightG, Integer npVolumeWeightG, Integer npFactualWeightG,
                       Long npCostMinor, Instant npMeasuredAt, boolean mismatch, boolean remeasured,
-                      Instant createdAt, List<Parcel.Seat> seats) {
+                      Instant createdAt, @Nullable List<Parcel.Seat> seats) {
     }
 
     public record Journal(int days, List<Row> rows) {
