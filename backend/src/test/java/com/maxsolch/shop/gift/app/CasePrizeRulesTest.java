@@ -1,12 +1,17 @@
 package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
+import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 /** The only guard against a case prize discount that is too big: 0..50 %, up to 100 000 ₴, not both zero. */
 class CasePrizeRulesTest {
@@ -65,16 +70,49 @@ class CasePrizeRulesTest {
     }
 
     @Test
-    void discountPrizeIsLiveOnlyWithSomethingToGive() {
+    void discountPrizeIsInThePoolOnlyWithSomethingToGive() {
         GiftCaseItem item = new GiftCaseItem();
         item.setKind(GiftCaseItem.Kind.DISCOUNT);
         item.setWeight(10);
         item.setDiscountPercent(0);
         item.setDiscountUah(0);
-        assertThat(CasePrizeRules.live(item, java.util.Map.of())).isFalse();
+        assertThat(CasePrizeRules.inPool(item)).isFalse();
         item.setDiscountUah(1);
-        assertThat(CasePrizeRules.live(item, java.util.Map.of())).isTrue();
+        assertThat(CasePrizeRules.inPool(item)).isTrue();
         item.setWeight(0);
-        assertThat(CasePrizeRules.live(item, java.util.Map.of())).isFalse();
+        assertThat(CasePrizeRules.inPool(item)).isFalse();
+        item.setWeight(10);
+        item.setActive(false);
+        assertThat(CasePrizeRules.inPool(item)).isFalse();
+    }
+
+    private static GiftCaseItem item(long id, GiftCaseTier.Tier tier, boolean discount, int weight) {
+        GiftCaseItem i = new GiftCaseItem();
+        i.setId(id);
+        i.setTier(tier);
+        i.setKind(discount ? GiftCaseItem.Kind.DISCOUNT : GiftCaseItem.Kind.PRODUCT);
+        if (discount) {
+            i.setDiscountUah(100);
+        } else {
+            i.setProductId(new byte[16]);
+        }
+        i.setWeight(weight);
+        return i;
+    }
+
+    @Test
+    void adminChancesGiveASoldOutProductsShareToTheDiscountsOfItsTier() {
+        // Bronze: a product 30 % (not in stock — no such product) + discounts 50 % and 20 %.
+        // Silver is counted on its own.
+        List<GiftCaseItem> items = List.of(
+                item(1, GiftCaseTier.Tier.BRONZE, false, 300_000),
+                item(2, GiftCaseTier.Tier.BRONZE, true, 500_000),
+                item(3, GiftCaseTier.Tier.BRONZE, true, 200_000),
+                item(4, GiftCaseTier.Tier.SILVER, true, 10));
+        Map<Long, Double> chances = CasePrizeRules.chances(items, Map.of());
+        assertThat(chances).doesNotContainKey(1L);
+        assertThat(chances.get(2L)).isCloseTo(500 / 7.0, within(0.01));
+        assertThat(chances.get(3L)).isCloseTo(200 / 7.0, within(0.01));
+        assertThat(chances.get(4L)).isEqualTo(100.0);
     }
 }

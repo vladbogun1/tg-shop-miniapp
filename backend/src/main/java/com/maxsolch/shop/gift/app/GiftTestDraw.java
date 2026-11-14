@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
 /** «Тест кейса» in the admin: the checkout's draw run many times on the saved prizes or on a draft, changing nothing. */
@@ -37,7 +38,8 @@ public class GiftTestDraw {
 
     /**
      * «Тест кейса»: {@code count} draws of the tier exactly as the checkout draws them (the same pool —
-     * active prizes with weight &gt; 0, a product only in stock — and {@link GiftCaseDraw#draw}), read-only: no order,
+     * active prizes with weight &gt; 0, a product out of stock giving its chance to the discounts — and
+     * {@link GiftCaseDraw#draw}), read-only: no order,
      * promo code, stock reserve or journal entry. A disabled tier may be tested too.
      */
     @Transactional(readOnly = true)
@@ -60,7 +62,7 @@ public class GiftTestDraw {
 
     /**
      * @param lowMargin draw as for an order with a low-margin product: product prizes get the tier's
-     *                  {@code lowMarginProductPercent} of the chance ({@link GiftCaseDraw#skewedWeights})
+     *                  {@code lowMarginProductPercent} of the chance ({@link GiftCaseDraw#liveWeights})
      */
     @Transactional(readOnly = true)
     public TestDrawDto testDraw(String tierCode, int count, List<CaseDraftItem> draft, boolean lowMargin) {
@@ -80,22 +82,26 @@ public class GiftTestDraw {
         }
         Map<String, ProductDto> byId = giftService.byId("ru");
         TierConfig cfg = draft == null ? giftService.tier(tier).orElse(null) : draftConfig(tier, draft);
-        List<CaseEntry> pool = cfg == null ? List.of()
-                : cfg.prizes().stream().filter(c -> c.isDiscount() || GiftService.inStock(byId.get(c.productId()))).toList();
+        List<CaseEntry> prizes = cfg == null ? List.of() : cfg.prizes();
+        Predicate<String> inStock = id -> GiftService.inStock(byId.get(id));
+        int productPercent = cfg == null ? 100 : cfg.productPercent(lowMargin);
+        long[] weights = GiftCaseDraw.liveWeights(prizes, inStock, productPercent);
+        Map<Long, Long> chanceWeight = new HashMap<>();
+        List<CaseEntry> pool = new ArrayList<>();
+        for (int i = 0; i < prizes.size(); i++) {
+            if (weights[i] > 0) {
+                chanceWeight.put(prizes.get(i).id(), weights[i]);
+                pool.add(prizes.get(i));
+            }
+        }
         if (pool.isEmpty()) {
             throw new DomainException.BadRequest(GiftError.NO_DROPPABLE_PRIZE);
-        }
-        int productPercent = cfg.productPercent(lowMargin);
-        long[] weights = GiftCaseDraw.skewedWeights(pool, productPercent);
-        Map<Long, Long> chanceWeight = new HashMap<>();
-        for (int i = 0; i < pool.size(); i++) {
-            chanceWeight.put(pool.get(i).id(), weights[i]);
         }
         long total = Arrays.stream(weights).sum();
         Map<Long, Integer> hits = new HashMap<>();
         List<CaseItemDto> drops = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            CaseEntry c = GiftCaseDraw.draw(pool, id -> true, random, productPercent).orElseThrow();
+            CaseEntry c = GiftCaseDraw.draw(prizes, inStock, random, productPercent).orElseThrow();
             hits.merge(c.id(), 1, Integer::sum);
             if (drops.size() < TEST_DROPS_SHOWN) {
                 drops.add(GiftService.itemDto(c, c.isDiscount() ? null : byId.get(c.productId())));

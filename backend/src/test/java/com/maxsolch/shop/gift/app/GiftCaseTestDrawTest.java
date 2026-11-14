@@ -83,15 +83,15 @@ class GiftCaseTestDrawTest {
         assertThat(res.count()).isEqualTo(n);
         Map<Long, GiftDtos.TestHitDto> hits = res.hits().stream()
                 .collect(Collectors.toMap(GiftDtos.TestHitDto::id, h -> h));
-        // Sold out (4) and weight 0 (5) are not in the pool, like at checkout.
+        // Sold out (4) and weight 0 (5) cannot drop, like at checkout; the sold-out 50 goes to the discounts (30 : 10).
         assertThat(hits.keySet()).containsExactlyInAnyOrder(1L, 2L, 3L);
         assertThat(res.hits().stream().mapToInt(GiftDtos.TestHitDto::hits).sum()).isEqualTo(n);
-        assertThat(hits.get(1L).chancePercent()).isEqualTo(60.0);
-        assertThat(hits.get(2L).chancePercent()).isEqualTo(30.0);
-        assertThat(hits.get(3L).chancePercent()).isEqualTo(10.0);
-        assertThat(hits.get(1L).hits() / (double) n).isCloseTo(0.60, within(0.02));
-        assertThat(hits.get(2L).hits() / (double) n).isCloseTo(0.30, within(0.02));
-        assertThat(hits.get(3L).hits() / (double) n).isCloseTo(0.10, within(0.015));
+        assertThat(hits.get(1L).chancePercent()).isEqualTo(40.0);
+        assertThat(hits.get(2L).chancePercent()).isEqualTo(45.0);
+        assertThat(hits.get(3L).chancePercent()).isEqualTo(15.0);
+        assertThat(hits.get(1L).hits() / (double) n).isCloseTo(0.40, within(0.02));
+        assertThat(hits.get(2L).hits() / (double) n).isCloseTo(0.45, within(0.02));
+        assertThat(hits.get(3L).hits() / (double) n).isCloseTo(0.15, within(0.015));
         assertThat(hits.get(1L).key()).isEqualTo("p" + IN_STOCK);
         assertThat(hits.get(2L).key()).isEqualTo("d2");
 
@@ -130,9 +130,11 @@ class GiftCaseTestDrawTest {
         GiftDtos.TestDrawDto res = service.testDraw("SILVER", 2000, draft, new SplittableRandom(7));
         Map<Long, GiftDtos.TestHitDto> hits = res.hits().stream()
                 .collect(Collectors.toMap(GiftDtos.TestHitDto::id, h -> h));
-        // The saved prizes are ignored; new draft prizes get -(index + 1); sold out and switched off drop out.
+        // The saved prizes are ignored; new draft prizes get -(index + 1); sold out and switched off drop out,
+        // the sold-out 10 goes to the discount: 50 / 110 and 60 / 110.
         assertThat(hits.keySet()).containsExactlyInAnyOrder(1L, -2L);
-        assertThat(hits.get(-2L).chancePercent()).isEqualTo(50.0);
+        assertThat(hits.get(1L).chancePercent()).isCloseTo(45.45, within(0.01));
+        assertThat(hits.get(-2L).chancePercent()).isCloseTo(54.55, within(0.01));
         verify(items, never()).save(any());
     }
 

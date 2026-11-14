@@ -63,6 +63,49 @@ class GiftCaseDrawTest {
         assertThat(GiftCaseDraw.draw(List.of(), id -> true, new SplittableRandom(1))).isEmpty();
     }
 
+    /**
+     * 14.11.2026: the cheap prizes ran out and their chance went to the rest, so the mats (5 % as set)
+     * became ⅔ of the products. Now a sold-out product's chance goes to the discounts only.
+     */
+    @Test
+    void soldOutProductGivesItsChanceToDiscountsNotToOtherProducts() {
+        List<GiftService.CaseEntry> bronze = List.of(
+                product(1, "glides", "COMMON", 300_000),
+                product(2, "mat", "RARE", 50_000),
+                discount(3, 0, 100, 450_000),
+                discount(4, 0, 150, 200_000));
+        // Glides sold out: the mat keeps 5 %, the discounts share the glides' 30 % in their ratio 450 : 200.
+        long[] w = GiftCaseDraw.liveWeights(bronze, "mat"::equals, 100);
+        long total = w[1] + w[2] + w[3];
+        assertThat(w[0]).isZero();
+        assertThat(GiftCaseDraw.chancePercent(w[1], total)).isEqualTo(5.0);
+        assertThat(w[2] * 200).isEqualTo(w[3] * 450);
+        assertThat(GiftCaseDraw.chancePercent(w[2] + w[3], total)).isEqualTo(95.0);
+
+        var random = new SplittableRandom(11);
+        int mats = 0;
+        int n = 200_000;
+        for (int i = 0; i < n; i++) {
+            if ("mat".equals(GiftCaseDraw.draw(bronze, "mat"::equals, random).orElseThrow().productId())) {
+                mats++;
+            }
+        }
+        assertThat(mats / (double) n).isCloseTo(0.05, within(0.003));
+    }
+
+    @Test
+    void allInStockKeepsTheChancesAsSet() {
+        List<GiftService.CaseEntry> pool = List.of(product(1, "a", "COMMON", 300_000), discount(2, 0, 100, 700_000));
+        long[] w = GiftCaseDraw.liveWeights(pool, id -> true, 100);
+        assertThat(GiftCaseDraw.chancePercent(w[0], w[0] + w[1])).isEqualTo(30.0);
+    }
+
+    @Test
+    void zeroWeightNeverDrops() {
+        List<GiftService.CaseEntry> pool = List.of(product(1, "a", "COMMON", 0), discount(2, 0, 100, 10));
+        assertThat(GiftCaseDraw.liveWeights(pool, id -> true, 100)[0]).isZero();
+    }
+
     @Test
     void discountsDropWithoutStock() {
         List<GiftService.CaseEntry> pool = List.of(product(1, "mouse", "COMMON", 50), discount(2, 10, 0, 50));

@@ -16,8 +16,8 @@ import java.time.Instant;
 
 /**
  * A prize of a gift case (V57): a product, or a discount (a personal promo code issued when the case
- * is opened). Each prize belongs to one tier; its chance is {@code weight} / the weights of the
- * tier's prizes that can drop now (products in stock, discounts always).
+ * is opened). Each prize belongs to one tier; its chance is {@code weight} / the weights of the tier's
+ * prizes, and a product out of stock gives its chance to the tier's discounts (GiftCaseDraw.liveWeights).
  */
 @Getter
 @Setter

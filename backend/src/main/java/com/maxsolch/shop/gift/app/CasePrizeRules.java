@@ -2,10 +2,17 @@ package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.catalog.app.ProductDto;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseItemAdminDto;
+import com.maxsolch.shop.gift.app.GiftService.CaseEntry;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
+import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -18,18 +25,37 @@ final class CasePrizeRules {
     private CasePrizeRules() {
     }
 
-    static boolean live(GiftCaseItem i, Map<String, ProductDto> byId) {
+    /** A prize the draw counts at all (stock aside): active, a chance set, a discount with a value or a product. */
+    static boolean inPool(GiftCaseItem i) {
         if (!i.isActive() || i.getWeight() <= 0) {
             return false;
         }
-        if (i.isDiscount()) {
-            return i.getDiscountPercent() > 0 || i.getDiscountUah() > 0;
-        }
-        return i.getProductId() != null && GiftService.inStock(byId.get(UuidUtil.toString(i.getProductId())));
+        return i.isDiscount() ? i.getDiscountPercent() > 0 || i.getDiscountUah() > 0 : i.getProductId() != null;
     }
 
-    static CaseItemAdminDto caseDto(GiftCaseItem i, ProductDto p, long total, boolean live) {
-        double chance = live ? GiftCaseDraw.chancePercent(i.getWeight(), total) : 0;
+    /**
+     * Chance in percent of every prize that can drop now, by prize id, exactly as the checkout draws it
+     * ({@link GiftCaseDraw#liveWeights}: a product out of stock gives its chance to the discounts). A prize
+     * that cannot drop is absent.
+     */
+    static Map<Long, Double> chances(List<GiftCaseItem> items, Map<String, ProductDto> byId) {
+        Map<GiftCaseTier.Tier, List<CaseEntry>> byTier = new EnumMap<>(GiftCaseTier.Tier.class);
+        items.stream().filter(CasePrizeRules::inPool)
+                .forEach(i -> byTier.computeIfAbsent(i.getTier(), k -> new ArrayList<>()).add(GiftService.entry(i)));
+        Map<Long, Double> out = new HashMap<>();
+        byTier.values().forEach(pool -> {
+            long[] w = GiftCaseDraw.liveWeights(pool, id -> GiftService.inStock(byId.get(id)), 100);
+            long total = Arrays.stream(w).sum();
+            for (int k = 0; k < pool.size(); k++) {
+                if (w[k] > 0) {
+                    out.put(pool.get(k).id(), GiftCaseDraw.chancePercent(w[k], total));
+                }
+            }
+        });
+        return out;
+    }
+
+    static CaseItemAdminDto caseDto(GiftCaseItem i, ProductDto p, double chance) {
         boolean discount = i.isDiscount();
         String title = discount ? discountLabel(i) : p == null ? "(товар скрыт или удалён)" : p.title();
         return new CaseItemAdminDto(i.getId(), i.getTier().name(), i.getKind().name(),

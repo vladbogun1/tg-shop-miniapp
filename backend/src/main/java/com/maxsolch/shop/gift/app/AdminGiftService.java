@@ -4,7 +4,6 @@ import com.maxsolch.shop.promo.app.PromoSettings;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.caseDto;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.discountLabel;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.kind;
-import static com.maxsolch.shop.gift.app.CasePrizeRules.live;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.rarity;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.setDiscount;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.weight;
@@ -224,17 +223,12 @@ public class AdminGiftService {
         List<GiftCaseItem> items = caseRepository.findAllByOrderBySortOrderAscIdAsc();
         Map<String, ProductDto> byId = new HashMap<>();
         catalogService.listActiveProducts(ADMIN_LANG).forEach(p -> byId.put(p.id(), p));
-        // Chances as the checkout draws them, per tier: active prizes that can drop (discounts, products in stock).
-        Map<GiftCaseTier.Tier, Long> totals = new EnumMap<>(GiftCaseTier.Tier.class);
-        for (GiftCaseItem i : items) {
-            if (live(i, byId)) {
-                totals.merge(i.getTier(), (long) i.getWeight(), Long::sum);
-            }
-        }
+        // Chances as the checkout draws them (a product out of stock gives its chance to the discounts).
+        Map<Long, Double> chances = CasePrizeRules.chances(items, byId);
         List<CaseItemAdminDto> out = new ArrayList<>();
         for (GiftCaseItem i : items) {
             out.add(caseDto(i, i.getProductId() == null ? null : byId.get(UuidUtil.toString(i.getProductId())),
-                    totals.getOrDefault(i.getTier(), 0L), live(i, byId)));
+                    chances.getOrDefault(i.getId(), 0.0)));
         }
         return out;
     }

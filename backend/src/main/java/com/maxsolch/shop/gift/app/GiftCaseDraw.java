@@ -28,45 +28,73 @@ final class GiftCaseDraw {
 
     /**
      * The same draw with product prizes' share set to {@code productPercent} % (an order with a
-     * low-margin product, {@link #skewedWeights}); 100 = the usual odds.
+     * low-margin product); 100 = the usual odds. Chances are {@link #liveWeights}.
      */
     public static Optional<CaseEntry> draw(List<CaseEntry> items, Predicate<String> available, RandomGenerator random,
                                            int productPercent) {
-        List<CaseEntry> pool = items.stream()
-                .filter(c -> c.weight() > 0 && (c.isDiscount() || available.test(c.productId())))
-                .toList();
-        long[] weights = skewedWeights(pool, productPercent);
+        long[] weights = liveWeights(items, available, productPercent);
         long total = Arrays.stream(weights).sum();
         if (total <= 0) {
             return Optional.empty();
         }
         long r = random.nextLong(total);
-        for (int i = 0; i < pool.size(); i++) {
+        for (int i = 0; i < items.size(); i++) {
             r -= weights[i];
             if (r < 0) {
-                return Optional.of(pool.get(i));
+                return Optional.of(items.get(i));
             }
         }
-        return Optional.of(pool.get(pool.size() - 1));
+        throw new IllegalStateException("draw ran past the total");
     }
 
     /**
-     * Weights of a pool that can drop now, with all product prizes together making {@code productPercent} %
-     * of the total and discount prizes the rest; the ratios inside each group stay (the jackpot is still
-     * the rarest product). Unchanged when the share is 100 or the pool has only products or only
-     * discounts — there is nothing to move the chance to.
+     * Weights the draw uses, one per item (0 = cannot drop now): a product that cannot drop (out of
+     * stock, over the gift limit) gives its chance to the discounts, split in their ratio, so every
+     * other product keeps exactly the chance the admin set — a sold-out prize never makes the rest drop
+     * more often. A tier without discounts has nowhere to move it: its products share the chance.
+     *
+     * <p>{@code productPercent} &lt; 100 (an order with a low-margin product): all product prizes together
+     * get that share of the tier as configured and the discounts the rest; the ratios inside each group stay
+     * (the jackpot is still the rarest product). The product that cannot drop gives its part of that share
+     * to the discounts too. Exact in integers (weights ≤ 10⁶, a tier ≤ ~10⁸, a result ≤ ~10¹⁶).
      */
-    static long[] skewedWeights(List<CaseEntry> pool, int productPercent) {
-        long[] w = pool.stream().mapToLong(CaseEntry::weight).toArray();
-        int pct = Math.max(0, Math.min(100, productPercent));
-        long products = pool.stream().filter(c -> !c.isDiscount()).mapToLong(CaseEntry::weight).sum();
-        long discounts = pool.stream().filter(CaseEntry::isDiscount).mapToLong(CaseEntry::weight).sum();
-        if (pct >= 100 || products <= 0 || discounts <= 0) {
+    static long[] liveWeights(List<CaseEntry> items, Predicate<String> available, int productPercent) {
+        int n = items.size();
+        boolean[] drops = new boolean[n];
+        long productsAll = 0;
+        long productsGone = 0;
+        long discounts = 0;
+        for (int i = 0; i < n; i++) {
+            CaseEntry c = items.get(i);
+            if (c.weight() <= 0) {
+                continue;
+            }
+            if (c.isDiscount()) {
+                drops[i] = true;
+                discounts += c.weight();
+            } else {
+                drops[i] = available.test(c.productId());
+                productsAll += c.weight();
+                productsGone += drops[i] ? 0 : c.weight();
+            }
+        }
+        long[] w = new long[n];
+        if (discounts <= 0) {
+            // Nothing to give the chance to: the products that can drop share it (the skew has no effect either).
+            for (int i = 0; i < n; i++) {
+                w[i] = drops[i] ? items.get(i).weight() : 0;
+            }
             return w;
         }
-        // products : discounts = pct : (100 − pct), exact in integers (weights ≤ 10⁶, a tier ≤ ~10⁸).
-        for (int i = 0; i < w.length; i++) {
-            w[i] = pool.get(i).isDiscount() ? w[i] * (100 - pct) * products : w[i] * pct * discounts;
+        int pct = Math.max(0, Math.min(100, productPercent));
+        boolean skew = pct < 100 && productsAll > 0;
+        // product : discount multipliers — a product keeps weight × pm, a discount takes its own and its share of the gone.
+        long pm = skew ? (long) pct * discounts : discounts;
+        long dm = skew ? (100L - pct) * productsAll + (long) pct * productsGone : discounts + productsGone;
+        for (int i = 0; i < n; i++) {
+            if (drops[i]) {
+                w[i] = items.get(i).weight() * (items.get(i).isDiscount() ? dm : pm);
+            }
         }
         return w;
     }

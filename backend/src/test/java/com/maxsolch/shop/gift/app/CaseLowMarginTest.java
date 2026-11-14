@@ -66,7 +66,7 @@ class CaseLowMarginTest {
 
     @Test
     void exactWeights() {
-        long[] w = GiftCaseDraw.skewedWeights(CASE, 10);
+        long[] w = GiftCaseDraw.liveWeights(CASE, id -> true, 10);
         long products = w[0] + w[1] + w[2];
         long discounts = w[3] + w[4];
         assertThat(products * 9).isEqualTo(discounts);
@@ -74,12 +74,20 @@ class CaseLowMarginTest {
     }
 
     @Test
-    void hundredOrOneSidedPoolIsUnchanged() {
-        assertThat(GiftCaseDraw.skewedWeights(CASE, 100)).containsExactly(600_000, 190_000, 10_000, 150_000, 50_000);
+    void hundredOrOneSidedPoolKeepsTheRatios() {
+        assertRatios(GiftCaseDraw.liveWeights(CASE, id -> true, 100), 600_000, 190_000, 10_000, 150_000, 50_000);
         List<GiftService.CaseEntry> onlyProducts = CASE.subList(0, 3);
-        assertThat(GiftCaseDraw.skewedWeights(onlyProducts, 10)).containsExactly(600_000, 190_000, 10_000);
+        assertThat(GiftCaseDraw.liveWeights(onlyProducts, id -> true, 10)).containsExactly(600_000, 190_000, 10_000);
         List<GiftService.CaseEntry> onlyDiscounts = CASE.subList(3, 5);
-        assertThat(GiftCaseDraw.skewedWeights(onlyDiscounts, 0)).containsExactly(150_000, 50_000);
+        assertRatios(GiftCaseDraw.liveWeights(onlyDiscounts, id -> true, 0), 150_000, 50_000);
+    }
+
+    /** {@code w} is {@code expected} times one common factor. */
+    private static void assertRatios(long[] w, long... expected) {
+        assertThat(w).hasSameSizeAs(expected);
+        for (int i = 1; i < w.length; i++) {
+            assertThat(w[i] * expected[0]).isEqualTo(w[0] * expected[i]);
+        }
     }
 
     @Test
@@ -91,8 +99,14 @@ class CaseLowMarginTest {
     }
 
     @Test
-    void outOfStockProductsStillLeaveTheShareToTheRest() {
-        // Only the pad is in stock: it alone takes the products' 10 %.
+    void outOfStockProductsGiveTheirPartOfTheShareToDiscounts() {
+        // Only the pad is in stock: it keeps its 600/800 of the products' 10 % (7.5 %), the rest is discounts'.
+        long[] w = GiftCaseDraw.liveWeights(CASE, "pad"::equals, 10);
+        long total = w[0] + w[3] + w[4];
+        assertThat(w[1]).isZero();
+        assertThat(w[2]).isZero();
+        assertThat(w[0] * 1000).isEqualTo(total * 75);
+        assertThat(w[3]).isEqualTo(w[4] * 3);
         var random = new SplittableRandom(9);
         int pads = 0;
         int n = 100_000;
@@ -101,7 +115,14 @@ class CaseLowMarginTest {
                 pads++;
             }
         }
-        assertThat(pads / (double) n).isCloseTo(0.10, within(0.005));
+        assertThat(pads / (double) n).isCloseTo(0.075, within(0.005));
+    }
+
+    @Test
+    void noProductInStockLeavesOnlyDiscounts() {
+        long[] w = GiftCaseDraw.liveWeights(CASE, id -> false, 10);
+        assertThat(w[0] + w[1] + w[2]).isZero();
+        assertThat(w[3]).isEqualTo(w[4] * 3).isPositive();
     }
 
     @Test

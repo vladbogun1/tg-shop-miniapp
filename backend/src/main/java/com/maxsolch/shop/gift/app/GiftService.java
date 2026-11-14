@@ -185,9 +185,7 @@ public class GiftService {
     public List<TierConfig> tiers(boolean includeDisabled) {
         Map<GiftCaseTier.Tier, List<CaseEntry>> byTier = new EnumMap<>(GiftCaseTier.Tier.class);
         caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
-                .filter(GiftCaseItem::isActive)
-                .filter(c -> c.getWeight() > 0)
-                .filter(c -> c.isDiscount() ? c.getDiscountPercent() > 0 || c.getDiscountUah() > 0 : c.getProductId() != null)
+                .filter(CasePrizeRules::inPool)
                 .forEach(c -> byTier.computeIfAbsent(c.getTier(), k -> new ArrayList<>()).add(entry(c)));
         return tierRepository.findAll().stream()
                 .filter(t -> includeDisabled || t.isEnabled())
@@ -210,7 +208,7 @@ public class GiftService {
         return parseTier(tier).flatMap(tierRepository::findById);
     }
 
-    private static CaseEntry entry(GiftCaseItem c) {
+    static CaseEntry entry(GiftCaseItem c) {
         return new CaseEntry(c.getId(), c.getTier(), c.getKind(),
                 c.getProductId() == null ? null : UuidUtil.toString(c.getProductId()),
                 c.getDiscountPercent(), c.getDiscountUah(), c.getRarity().name(), c.getWeight());
