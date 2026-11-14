@@ -42,7 +42,7 @@ public class NovaPoshtaService {
     public List<NpCityDto> searchCities(String q) {
         List<NovaPoshtaCity> cities = (q == null || withoutApostrophes(q).isBlank())
                 ? cityRepository.findTop50ByOrderByNameAsc()
-                : cityRepository.searchRanked(withoutApostrophes(q.trim().toLowerCase(java.util.Locale.ROOT)));
+                : cityRepository.searchRanked(withoutApostrophes(q.toLowerCase(java.util.Locale.ROOT)).trim());
         return cities.stream()
                 .map(c -> new NpCityDto(c.getRef(), c.getName(), c.getArea()))
                 .toList();

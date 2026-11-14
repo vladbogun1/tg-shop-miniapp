@@ -24,6 +24,8 @@ export const orderKeys = {
   giftTiers: () => ["gift", "tiers"] as const,
   /** Заказы покупателя в его профиле (фича «Покупатели»). */
   userOrders: () => ["user-orders"] as const,
+  /** Все «последние заказы» — сбрасываются после нового заказа. */
+  lastOrderAll: () => ["new-order-last"] as const,
   /** Последний заказ покупателя — с ним открывается «Новый заказ» из профиля. */
   lastOrderOf: (tgId: number | null) => ["new-order-last", tgId] as const,
 };

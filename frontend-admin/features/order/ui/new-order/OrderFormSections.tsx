@@ -23,7 +23,7 @@ export function CustomerSection({ values: v, onChange }: SectionProps) {
         value={v.tgId}
         onChange={(e) => onChange({ tgId: e.target.value.replace(/\D/g, "").slice(0, 18) })}
         placeholder="если он уже писал боту"
-        hint="Тогда заказ будет и в его кабинете"
+        hint="Заказ появится в кабинете этого аккаунта — проверьте id"
       />
       <Input label="Промокод" value={v.promo} onChange={(e) => onChange({ promo: e.target.value })} autoComplete="off" />
       <div className="sm:col-span-2">

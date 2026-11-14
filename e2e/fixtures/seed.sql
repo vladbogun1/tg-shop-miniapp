@@ -69,9 +69,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- branches, the ones the orders below point at. A customer's checkout is checked against it (branch exists in
 -- the city and is open), so the specs that place orders through /api/orders need it, not only the storefront.
 INSERT INTO nova_poshta_cities (ref, name, area) VALUES ('e2e-city', 'Київ', 'Київська');
-INSERT INTO nova_poshta_warehouses (ref, city_ref, city_name, number, description, type, lat, lng) VALUES
-  ('e2e-wh-1', 'e2e-city', 'Київ', '1', 'Відділення №1 (тест): вул. Вигадана, 1', 'Branch', 50.4501, 30.5234),
-  ('e2e-wh-2', 'e2e-city', 'Київ', '2', 'Відділення №2 (тест): вул. Інша, 2', 'Branch', 50.4547, 30.5238);
+INSERT INTO nova_poshta_warehouses (ref, city_ref, city_name, number, description, type, category, lat, lng) VALUES
+  ('e2e-wh-1', 'e2e-city', 'Київ', '1', 'Відділення №1 (тест): вул. Вигадана, 1', 'Branch', 'BRANCH', 50.4501, 30.5234),
+  ('e2e-wh-2', 'e2e-city', 'Київ', '2', 'Відділення №2 (тест): вул. Інша, 2', 'Branch', 'BRANCH', 50.4547, 30.5238);
 
 -- ---------- Payment (all online via monobank) ----------
 -- Orders keep a snapshot of the option title, so the older orders below still say
