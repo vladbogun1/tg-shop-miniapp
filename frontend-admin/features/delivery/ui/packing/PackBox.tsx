@@ -146,6 +146,7 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
         boxes={inStock}
         choice={choice}
         postomat={postomat}
+        thickness={multi}
         onChoice={(c) => {
           save.reset();
           setPicked(c);

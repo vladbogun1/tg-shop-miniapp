@@ -70,10 +70,13 @@ function CustomFields({ c, postomat, thickness, onChoice }: { c: Custom; postoma
       </div>
       {tooBig && <p className="text-[12.5px] font-semibold text-[var(--danger)]">Больше 60×40×30 см — в поштомат не влезет</p>}
       <Input aria-label="Название" placeholder="Название (необязательно)" value={c.name} onChange={(e) => set({ name: e.target.value })} />
-      <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[var(--text)] pointer-coarse:min-h-11">
-        <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.save} onChange={(e) => set({ save: e.target.checked })} />
-        Сохранить в мои коробки
-      </label>
+      {/* Места из нескольких в «Мои коробки» не сохраняются — галки там нет. */}
+      {!thickness && (
+        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[var(--text)] pointer-coarse:min-h-11">
+          <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={c.save} onChange={(e) => set({ save: e.target.checked })} />
+          Сохранить в мои коробки
+        </label>
+      )}
     </div>
   );
 }

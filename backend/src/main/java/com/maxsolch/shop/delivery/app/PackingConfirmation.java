@@ -129,8 +129,9 @@ public class PackingConfirmation {
             Choice c = choice(p);
             checkWeight(p.weightG());
             int h = c.heightMm() != null ? c.heightMm() : thickness(p.custom(), units);
+            // An own bag's thickness is in its label: the label is what tells the same seats again.
             String name = c.box() != null ? BoxOptions.option(c.box(), h).label()
-                    : c.bag() ? bagLabel(c.name(), c.lengthMm(), c.widthMm()) : customLabel(c.name(), c.lengthMm(), c.widthMm(), h);
+                    : customLabel(c.name() != null ? c.name() : c.bag() ? "Свой пакет" : null, c.lengthMm(), c.widthMm(), h);
             seats.add(new Parcel.Seat(p.weightG() != null ? p.weightG() : share + c.tareG(), c.lengthMm(), c.widthMm(), h, name));
         }
         Parcel.Seat first = seats.get(0);

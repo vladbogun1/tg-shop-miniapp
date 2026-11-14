@@ -420,9 +420,9 @@ class PackingConfirmationTest {
         // A seat with no weight typed: half the goods (1300 / 2) + the box's 200 g.
         assertThat(o.getValue().seats()).containsExactly(
                 new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),
-                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42 см"));
+                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42×1 см"));
         assertThat(o.getValue().weightG()).isEqualTo(1550);
-        assertThat(row.getBoxLabel()).isEqualTo("2 места: Коробка 5 кг · 8 см + Стрейч 49×42 см");
+        assertThat(row.getBoxLabel()).isEqualTo("2 места: Коробка 5 кг · 8 см + Стрейч 49×42×1 см");
         assertThat(PackingPlaces.multi(row.getBoxLabel())).isTrue();
         verify(memory, never()).remember(any(), any());
     }
