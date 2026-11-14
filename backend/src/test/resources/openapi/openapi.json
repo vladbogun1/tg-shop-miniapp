@@ -5857,6 +5857,12 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "places" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryPackingCommandsPlace"
+            },
+            "type" : "array"
+          },
           "seats" : {
             "format" : "int32",
             "type" : "integer"
@@ -6554,6 +6560,25 @@
           "type",
           "url"
         ],
+        "type" : "object"
+      },
+      "DeliveryPackingCommandsPlace" : {
+        "properties" : {
+          "boxId" : {
+            "type" : "string"
+          },
+          "custom" : {
+            "$ref" : "#/components/schemas/CustomBox"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "DeliveryPackingJournalRow" : {
@@ -11834,6 +11859,12 @@
           },
           "recipientMiddleName" : {
             "type" : "string"
+          },
+          "seats" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryParcelSeat"
+            },
+            "type" : "array"
           },
           "senderWarehouseRef" : {
             "type" : "string"

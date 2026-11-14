@@ -7,6 +7,7 @@
  * После подтверждения — строка «✓ Коробка … · кто, когда» с «Изменить».
  * До нажатия сервер проверяет ТТН с этой коробкой (PackCheck): что не пройдёт — видно сразу, кнопка ждёт исправления.
  * Выбор и вес живут в черновике вкладки (use-pack-draft) — отказ НП или обновление страницы их не сбрасывают.
+ * «Второе место» — та же ТТН несколькими местами (PackPlaces): у каждого своя коробка и вес.
  */
 import { useMemo, useState } from "react";
 import { Check, PackageCheck, Pencil } from "lucide-react";
@@ -14,14 +15,14 @@ import { errorMessage } from "@shop/core/errors";
 import { formatShortDateTime } from "@shop/core/time";
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
-import { Input } from "@/components/ui/Input";
-import { toMm, weightText } from "../../model/format";
-import { choiceByLabel, choiceLabel, confirmBody, isBagBox, npHasParcel, type PackChoice } from "../../model/packing";
+import { toMm } from "../../model/format";
+import { choiceByLabel, choiceLabel, isBagBox, npHasParcel, packBody, placesWord, type PackChoice } from "../../model/packing";
 import type { NpBox, Packing } from "../../model/types";
 import { useBoxesQuery, useConfirmBox } from "../../queries-packing";
 import { BoxGlyph } from "../boxes/BoxGlyph";
 import { NpRefusalHint, PackProblems, usePackProblems } from "./PackCheck";
 import { PackPicker } from "./PackPicker";
+import { PackPlaces, SeatWeight } from "./PackPlaces";
 import { usePackDraft } from "./use-pack-draft";
 
 const PRINTED_WARNING =
@@ -77,6 +78,34 @@ function initialChoice(boxes: NpBox[], p: Packing): PackChoice | null {
   return choiceByLabel(boxes, p.boxSuggested);
 }
 
+/** «Пакуй в: Коробка 5 кг · 8 см» (или «2 места, место 1: …») и почему так советует система. */
+function PickerHead({ boxes, choice, p, places, suggested }: { boxes: NpBox[]; choice: PackChoice | null; p: Packing; places: number; suggested: boolean }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <ChoiceGlyph boxes={boxes} choice={choice} />
+      <div className="min-w-0">
+        <div className="break-words text-[14px] text-[var(--text)]">
+          {places > 1 ? `${placesWord(places)}, место 1: ` : "Пакуй в: "}
+          <b className="font-semibold">{choice ? choiceLabel(boxes, choice) : (p.boxSuggested ?? "выберите коробку")}</b>
+        </div>
+        {suggested && p.boxSuggestedSource && <div className="text-[12px] text-[var(--text-faint)]">{p.boxSuggestedSource}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** Ошибка остаётся под кнопкой, пока не выбрана другая коробка — видно, что не так, без поиска тостов. */
+function SaveError({ error }: { error: unknown }) {
+  return (
+    <>
+      <p role="alert" className="break-words text-[12.5px] font-semibold text-[var(--danger-ink)]">
+        {errorMessage(error, undefined, "Не удалось подтвердить коробку")}
+      </p>
+      <NpRefusalHint />
+    </>
+  );
+}
+
 function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: string | null; p: Packing; postomat: boolean; onDone: () => void }) {
   const q = useBoxesQuery();
   const all = useMemo(() => q.data?.boxes ?? [], [q.data]);
@@ -84,17 +113,22 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
     const own = all.filter((b) => b.inStock);
     return own.length > 0 ? own : all;
   }, [all]);
-  const { picked, setPicked, weight, setWeight, clear } = usePackDraft(orderId);
+  const { picked, setPicked, weight, setWeight, more, setMore, clear } = usePackDraft(orderId);
   const choice = picked ?? initialChoice(all, p);
+  // Несколько мест в поштомат не принимают: там только одно.
+  const multi = !postomat && more.length > 0;
   const confirm = useConfirm();
   const save = useConfirmBox(orderId, ttn, () => {
     clear();
     onDone();
   });
-  const body = choice ? confirmBody(choice, weight) : null;
+  const body = packBody(choice, weight, multi ? more : []);
   const check = usePackProblems(orderId, body);
   const blocked = check.problems.length > 0;
-  const suggested = !picked && !p.boxId;
+  const onWeight = (v: string) => {
+    save.reset();
+    setWeight(v);
+  };
 
   async function submit() {
     if (!body) return;
@@ -107,15 +141,7 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
 
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <ChoiceGlyph boxes={all} choice={choice} />
-        <div className="min-w-0">
-          <div className="break-words text-[14px] text-[var(--text)]">
-            Пакуй в: <b className="font-semibold">{choice ? choiceLabel(all, choice) : (p.boxSuggested ?? "выберите коробку")}</b>
-          </div>
-          {suggested && p.boxSuggestedSource && <div className="text-[12px] text-[var(--text-faint)]">{p.boxSuggestedSource}</div>}
-        </div>
-      </div>
+      <PickerHead boxes={all} choice={choice} p={p} places={multi ? more.length + 1 : 1} suggested={!picked && !p.boxId} />
       <PackPicker
         boxes={inStock}
         choice={choice}
@@ -126,21 +152,20 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
         }}
       />
       {postomat && <BagFoldHint boxes={all} choice={choice} />}
+      {multi && <SeatWeight label="Вес места 1, г" value={weight} onChange={onWeight} />}
+      {!postomat && (
+        <PackPlaces
+          boxes={inStock}
+          more={more}
+          onChange={(m) => {
+            save.reset();
+            setMore(m);
+          }}
+        />
+      )}
       {npHasParcel(p.statusCode) && <p className="text-[12.5px] text-[var(--text-muted)]">НП уже приняла посылку — ТТН не изменится, коробку запишем для статистики.</p>}
       <div className="flex min-w-0 flex-wrap items-end gap-2">
-        <div className="w-36 min-w-0">
-          <Input
-            label="Вес, г"
-            inputMode="numeric"
-            placeholder="по товарам"
-            value={weight}
-            onChange={(e) => {
-              save.reset();
-              setWeight(e.target.value.replace(/[^\d]/g, ""));
-            }}
-            hint={weight ? weightText(Number(weight)) : undefined}
-          />
-        </div>
+        {!multi && <SeatWeight label="Вес, г" value={weight} onChange={onWeight} />}
         <Button
           variant="accent"
           className="flex-1 basis-40 pointer-coarse:min-h-11 sm:flex-none"
@@ -153,15 +178,7 @@ function Picker({ orderId, ttn, p, postomat, onDone }: { orderId: string; ttn?: 
         </Button>
       </div>
       <PackProblems problems={check.problems} warnings={check.warnings} />
-      {save.isError && (
-        // Ошибка остаётся под кнопкой, пока не выбрана другая коробка — видно, что не так, без поиска тостов.
-        <>
-          <p role="alert" className="break-words text-[12.5px] font-semibold text-[var(--danger-ink)]">
-            {errorMessage(save.error, undefined, "Не удалось подтвердить коробку")}
-          </p>
-          <NpRefusalHint />
-        </>
-      )}
+      {save.isError && <SaveError error={save.error} />}
     </div>
   );
 }

@@ -20,11 +20,26 @@ public final class ShipmentCommands {
      * @param collectCod  false = do not collect the rest of the money (it was paid another way)
      * @param allowUnpaid the admin confirmed sending although the online payment has not arrived
      * @param documents   null = «Документи» when the goods qualify; false = always a parcel; true = documents
+     * @param seats       two or more seats the packer made (each its sides and weight); null = one seat of the
+     *                    weight and sides above, or the computed parcel
      */
     public record Options(String senderWarehouseRef, Integer weightG, Integer lengthMm, Integer widthMm,
                           Integer heightMm, Long declaredMinor, Boolean collectCod, String description,
                           LocalDate date, String recipientLastName, String recipientFirstName,
-                          String recipientMiddleName, boolean allowUnpaid, Boolean documents) {
+                          String recipientMiddleName, boolean allowUnpaid, Boolean documents, List<Parcel.Seat> seats) {
+
+        public Options(String senderWarehouseRef, Integer weightG, Integer lengthMm, Integer widthMm,
+                       Integer heightMm, Long declaredMinor, Boolean collectCod, String description,
+                       LocalDate date, String recipientLastName, String recipientFirstName,
+                       String recipientMiddleName, boolean allowUnpaid, Boolean documents) {
+            this(senderWarehouseRef, weightG, lengthMm, widthMm, heightMm, declaredMinor, collectCod, description, date,
+                    recipientLastName, recipientFirstName, recipientMiddleName, allowUnpaid, documents, null);
+        }
+
+        /** The packer's own seats: two or more. */
+        public boolean ownSeats() {
+            return seats != null && seats.size() > 1;
+        }
 
         public static Options defaults() {
             return new Options(null, null, null, null, null, null, null, null, null, null, null, null, false, null);
@@ -39,7 +54,8 @@ public final class ShipmentCommands {
 
         Options allowingUnpaid() {
             return new Options(senderWarehouseRef, weightG, lengthMm, widthMm, heightMm, declaredMinor, collectCod,
-                    description, date, recipientLastName, recipientFirstName, recipientMiddleName, true, documents);
+                    description, date, recipientLastName, recipientFirstName, recipientMiddleName, true, documents,
+                    seats);
         }
     }
 

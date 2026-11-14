@@ -4,11 +4,13 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.delivery.app.PackingCommands.ConfirmBox;
 import com.maxsolch.shop.delivery.app.PackingCommands.Confirmed;
 import com.maxsolch.shop.delivery.app.PackingCommands.CustomBox;
+import com.maxsolch.shop.delivery.app.PackingCommands.Place;
 import com.maxsolch.shop.delivery.app.ShipmentCommands.Options;
 import com.maxsolch.shop.delivery.domain.BoxOptions;
 import com.maxsolch.shop.delivery.domain.DeliveryError;
 import com.maxsolch.shop.delivery.domain.NpBox;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.domain.PackingMemoryEntry;
 import com.maxsolch.shop.delivery.domain.ParcelPacking.Unit;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
@@ -400,5 +402,57 @@ class PackingConfirmationTest {
                 .isInstanceOf(DomainException.class);
         verify(editing, never()).updateHeld(any(), any());
         assertThat(BoxOptions.allows(np5, 100)).isFalse();
+    }
+
+    /** A mouse in «Коробка 5 кг» folded to 8 cm + a mat in stretch film 49×42×1 cm, 700 g (order #980653d6, 14.11). */
+    private ConfirmBox mouseAndMat() {
+        return new ConfirmBox(null, null, null, null, null, List.of(
+                new Place(UuidUtil.toString(np5.getId()), 80, null, null),
+                new Place(null, null, new CustomBox("Стрейч", 490, 420, 10, false, true), 700)));
+    }
+
+    @Test
+    void twoPlacesGoAsTwoSeatsOfOneWaybill() {
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(editing).updateHeld(eq(ORDER), o.capture());
+        // A seat with no weight typed: half the goods (1300 / 2) + the box's 200 g.
+        assertThat(o.getValue().seats()).containsExactly(
+                new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),
+                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42 см"));
+        assertThat(o.getValue().weightG()).isEqualTo(1550);
+        assertThat(row.getBoxLabel()).isEqualTo("2 места: Коробка 5 кг · 8 см + Стрейч 49×42 см");
+        assertThat(PackingPlaces.multi(row.getBoxLabel())).isTrue();
+        verify(memory, never()).remember(any(), any());
+    }
+
+    @Test
+    void theSameSeatsAgainSendNothingButOneBoxAfterThemDoes() {
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+        row.setLengthMm(400);
+        row.setWidthMm(240);
+        row.setHeightMm(80);
+        row.setWeightG(1550);
+        confirmation.confirm(ORDER_ID, mouseAndMat());
+        verify(editing, times(1)).updateHeld(eq(ORDER), any());
+
+        // The first seat alone, of the same total weight, is not «the same parcel»: the row held two seats.
+        confirmation.confirm(ORDER_ID, new ConfirmBox(UuidUtil.toString(np5.getId()), 80, null, 1550, null));
+        verify(editing, times(2)).updateHeld(eq(ORDER), any());
+    }
+
+    @Test
+    void theCheckOfSeveralSeatsHasNoBagWarningAndSendsTheSeats() {
+        when(orders.find(ORDER)).thenReturn(Optional.of(NpFixtures.order(OrderStatus.APPROVED, false, null)));
+        when(shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(ORDER)).thenReturn(Optional.empty());
+        when(preparation.prepare(eq(ORDER), any())).thenReturn(prepared(List.of(), false, 0));
+
+        confirmation.check(ORDER_ID, mouseAndMat());
+
+        ArgumentCaptor<Options> o = ArgumentCaptor.forClass(Options.class);
+        verify(preparation).prepare(eq(ORDER), o.capture());
+        assertThat(o.getValue().ownSeats()).isTrue();
+        assertThat(o.getValue().seats()).hasSize(2);
     }
 }

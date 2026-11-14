@@ -7913,6 +7913,7 @@ export interface components {
             custom?: components["schemas"]["CustomBox"];
             /** Format: int32 */
             heightMm?: number;
+            places?: components["schemas"]["DeliveryPackingCommandsPlace"][];
             /** Format: int32 */
             seats?: number;
             /** Format: int32 */
@@ -8119,6 +8120,14 @@ export interface components {
             id: string;
             type: string;
             url: string;
+        };
+        DeliveryPackingCommandsPlace: {
+            boxId?: string;
+            custom?: components["schemas"]["CustomBox"];
+            /** Format: int32 */
+            heightMm?: number;
+            /** Format: int32 */
+            weightG?: number;
         };
         DeliveryPackingJournalRow: {
             /** Format: date-time */
@@ -9720,6 +9729,7 @@ export interface components {
             recipientFirstName?: string;
             recipientLastName?: string;
             recipientMiddleName?: string;
+            seats?: components["schemas"]["DeliveryParcelSeat"][];
             senderWarehouseRef?: string;
             /** Format: int32 */
             weightG?: number;

@@ -6,22 +6,34 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { createStorage } from "@shop/core/storage";
-import type { PackChoice } from "../../model/packing";
+import type { PackChoice, PackPlace } from "../../model/packing";
 
 const store = createStorage("session", "admin-pack-");
 
 interface Draft {
   picked: PackChoice | null;
   weight: string;
+  /** Места после первого — пусто, если посылка одним местом. */
+  more: PackPlace[];
 }
+
+const EMPTY: Draft = { picked: null, weight: "", more: [] };
 
 function isChoice(x: unknown): x is PackChoice {
   const k = (x as { kind?: unknown } | null)?.kind;
   return k === "box" || k === "custom";
 }
 
+function places(x: unknown): PackPlace[] {
+  if (!Array.isArray(x)) return [];
+  return x.map((p: { choice?: unknown; weight?: unknown }) => ({
+    choice: isChoice(p?.choice) ? p.choice : null,
+    weight: typeof p?.weight === "string" ? p.weight : "",
+  }));
+}
+
 export function usePackDraft(orderId: string) {
-  const [draft, setDraft] = useState<Draft>({ picked: null, weight: "" });
+  const [draft, setDraft] = useState<Draft>(EMPTY);
 
   // Читаем после монтирования: первый рендер совпадает с серверным.
   useEffect(() => {
@@ -30,6 +42,7 @@ export function usePackDraft(orderId: string) {
     setDraft({
       picked: isChoice(picked) ? picked : null,
       weight: typeof saved?.weight === "string" ? saved.weight : "",
+      more: places(saved?.more),
     });
   }, [orderId]);
 
@@ -44,14 +57,16 @@ export function usePackDraft(orderId: string) {
   );
   const clear = useCallback(() => {
     store.removeItem(orderId);
-    setDraft({ picked: null, weight: "" });
+    setDraft(EMPTY);
   }, [orderId]);
 
   return {
     picked: draft.picked,
     weight: draft.weight,
+    more: draft.more,
     setPicked: (picked: PackChoice | null) => update({ picked }),
     setWeight: (weight: string) => update({ weight }),
+    setMore: (more: PackPlace[]) => update({ more }),
     clear,
   };
 }

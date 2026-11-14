@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxSizeText, choiceByLabel, choiceLabel, cm, confirmBody, confirmMessage, npHasParcel, ownBoxBody, remeasureText } from "./packing";
+import { boxSizeText, choiceByLabel, choiceLabel, cm, confirmBody, confirmMessage, npHasParcel, ownBoxBody, placesBody, placesWord, remeasureText } from "./packing";
 import type { NpBox } from "./types";
 
 const npBox = (over: Partial<NpBox>): NpBox => ({
@@ -60,6 +60,20 @@ describe("«Упаковано»", () => {
       weightG: undefined,
     });
     expect(choiceLabel(boxes, { kind: "custom", name: "", l: "55", w: "50", h: "", save: false, bag: true })).toBe("Свой пакет 55×50 см");
+  });
+  it("несколько мест: у каждого коробка и вес, у стрейча — вписанная толщина; невыбранное место — null", () => {
+    const mouse = { kind: "box", boxId: "b5", heightMm: 80 } as const;
+    const mat = { kind: "custom", name: "Стрейч", l: "49", w: "42", h: "1", save: false, bag: true } as const;
+    expect(placesBody(mouse, "", [{ choice: mat, weight: "700" }])).toEqual({
+      places: [
+        { boxId: "b5", heightMm: 80, weightG: undefined },
+        { custom: { name: "Стрейч", lengthMm: 490, widthMm: 420, heightMm: 10, saveAsBox: false, bag: true }, weightG: 700 },
+      ],
+    });
+    expect(placesBody(mouse, "", [{ choice: null, weight: "" }])).toBeNull();
+    // Одним местом толщина своего пакета по-прежнему считается по товару.
+    expect(confirmBody(mat, "")?.custom?.heightMm).toBeUndefined();
+    expect([2, 5, 11, 21].map(placesWord)).toEqual(["2 места", "5 мест", "11 мест", "21 место"]);
   });
   it("тост: заменена, обновлена, только записали", () => {
     const sh = { ttn: "2045" };

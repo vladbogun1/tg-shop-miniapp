@@ -16,9 +16,33 @@ public final class PackingCommands {
      * null = the full height, a bag — the goods' thickness) OR typed-in sides ({@code custom}).
      *
      * @param weightG from the scales; null = the goods' weight + the box's tare
-     * @param seats   reserved for several seats: null or 1 for now
+     * @param seats   ignored (kept for old clients): several seats come as {@code places}
+     * @param places  two or more seats (місця) of one waybill — each its own box or typed-in sides and weight;
+     *                null or one = the box above
      */
-    public record ConfirmBox(String boxId, Integer heightMm, CustomBox custom, Integer weightG, Integer seats) {
+    public record ConfirmBox(String boxId, Integer heightMm, CustomBox custom, Integer weightG, Integer seats,
+                             List<Place> places) {
+
+        public ConfirmBox(String boxId, Integer heightMm, CustomBox custom, Integer weightG, Integer seats) {
+            this(boxId, heightMm, custom, weightG, seats, null);
+        }
+
+        /** Several seats asked for. */
+        public boolean multi() {
+            return places != null && places.size() > 1;
+        }
+
+        Place single() {
+            return new Place(boxId, heightMm, custom, weightG);
+        }
+    }
+
+    /**
+     * One seat of a several-seat parcel: a catalog box ({@code boxId} + {@code heightMm}) or typed-in sides; an own
+     * bag may carry its thickness in {@code custom.heightMm}. {@code weightG} null = the goods' weight shared
+     * equally between the seats + the box's tare.
+     */
+    public record Place(String boxId, Integer heightMm, CustomBox custom, Integer weightG) {
     }
 
     /**

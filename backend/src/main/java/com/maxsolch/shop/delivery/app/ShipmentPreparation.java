@@ -186,8 +186,10 @@ class ShipmentPreparation {
                     + "если внутри не только плоские товары, переключите на посылку");
         }
         if (parcel.seats().size() > 1) {
-            warnings.add("Посылка на " + parcel.seats().size() + " места (" + parcel.source()
-                    + ") — впишите вес и коробку, чтобы отправить одним местом");
+            if (!o.ownSeats()) {
+                warnings.add("Посылка на " + parcel.seats().size() + " места (" + parcel.source()
+                        + ") — впишите вес и коробку, чтобы отправить одним местом");
+            }
             if (service == NpServiceType.POSTOMAT) {
                 problems.add("В поштомат — только одно место; впишите одну коробку или выберите отделение");
             }
@@ -261,6 +263,10 @@ class ShipmentPreparation {
      * admin's own — they make one seat of that box. Equal values keep the computed seats.
      */
     static Parcel withOverrides(Parcel auto, Options o) {
+        if (o.ownSeats()) {
+            // Packed as several seats (a mat in stretch film + a mouse in a box): exactly those, never «Документи».
+            return Parcel.of(o.seats(), "упаковано в " + o.seats().size() + " места", auto.packMinor());
+        }
         boolean weightSame = o.weightG() == null || o.weightG() <= 0 || o.weightG() == auto.weightG();
         boolean boxSame = sameOrUnset(o.lengthMm(), auto.lengthMm()) && sameOrUnset(o.widthMm(), auto.widthMm())
                 && sameOrUnset(o.heightMm(), auto.heightMm());

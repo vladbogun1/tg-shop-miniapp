@@ -4,11 +4,13 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.delivery.app.PackingCommands.ConfirmBox;
 import com.maxsolch.shop.delivery.app.PackingCommands.Confirmed;
 import com.maxsolch.shop.delivery.app.PackingCommands.CustomBox;
+import com.maxsolch.shop.delivery.app.PackingCommands.Place;
 import com.maxsolch.shop.delivery.app.ShipmentCommands.Options;
 import com.maxsolch.shop.delivery.domain.BoxOptions;
 import com.maxsolch.shop.delivery.domain.DeliveryError;
 import com.maxsolch.shop.delivery.domain.NpBox;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.domain.PackingMemoryEntry;
 import com.maxsolch.shop.delivery.domain.ParcelPacking.Unit;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
@@ -91,8 +93,12 @@ public class PackingConfirmation {
                           boolean saveAsBox, boolean bag) {
     }
 
-    /** The parcel this box makes of the order's goods: sides (a bag folded into the locker's cell) and weight. */
-    private record Measured(int lengthMm, int widthMm, int heightMm, int weightG, int[] folded) {
+    /**
+     * The parcel this box makes of the order's goods: sides (a bag folded into the locker's cell) and weight. Several
+     * seats: the first seat's sides, the whole weight, every seat and their label.
+     */
+    private record Measured(int lengthMm, int widthMm, int heightMm, int weightG, int[] folded, List<Parcel.Seat> seats,
+                            String label) {
     }
 
     private Measured measure(ShippingOrder order, String service, Choice c, Integer weightG) {
@@ -105,7 +111,41 @@ public class PackingConfirmation {
         int[] cell = c.bag() ? postomats.cell(service, order) : null;
         int[] folded = cell == null ? null : BoxOptions.foldBag(sides[0], sides[1], height, units, cell);
         return new Measured(folded == null ? sides[0] : folded[0], folded == null ? sides[1] : folded[1],
-                height, weight, folded);
+                height, weight, folded, null, null);
+    }
+
+    /** Several seats: each its box or sides; a weight not typed is the goods' weight shared equally + the tare. */
+    private Measured places(ShippingOrder order, List<Place> places) {
+        if (places.size() > PackingPlaces.MAX) {
+            throw NpErrors.bad("Не больше " + PackingPlaces.MAX + " мест в одной ТТН");
+        }
+        List<Unit> units = parcels.units(order);
+        int share = (int) Math.ceil(units.stream().mapToInt(Unit::weightG).sum() / (double) places.size());
+        List<Parcel.Seat> seats = new ArrayList<>();
+        for (Place p : places) {
+            if (p == null) {
+                throw NpErrors.bad("Место " + (seats.size() + 1) + ": выберите коробку или впишите размеры");
+            }
+            Choice c = choice(p);
+            checkWeight(p.weightG());
+            int h = c.heightMm() != null ? c.heightMm() : thickness(p.custom(), units);
+            String name = c.box() != null ? BoxOptions.option(c.box(), h).label()
+                    : c.bag() ? bagLabel(c.name(), c.lengthMm(), c.widthMm()) : customLabel(c.name(), c.lengthMm(), c.widthMm(), h);
+            seats.add(new Parcel.Seat(p.weightG() != null ? p.weightG() : share + c.tareG(), c.lengthMm(), c.widthMm(), h, name));
+        }
+        Parcel.Seat first = seats.get(0);
+        return new Measured(first.lengthMm(), first.widthMm(), first.heightMm(),
+                seats.stream().mapToInt(Parcel.Seat::weightG).sum(), null, seats,
+                PackingPlaces.label(seats.stream().map(Parcel.Seat::box).toList()));
+    }
+
+    /** A bag of one seat: as thick as typed in for an own bag (a mat in stretch film), else as the goods. */
+    private static int thickness(CustomBox c, List<Unit> units) {
+        return c != null && c.isBag() && side(c.heightMm()) ? c.heightMm() : BoxOptions.bagHeight(units);
+    }
+
+    private Measured measured(ShippingOrder order, OrderShipment s, ConfirmBox req, Choice c) {
+        return c == null ? places(order, req.places()) : measure(order, serviceOf(s, order), c, req.weightG());
     }
 
     private static void checkWeight(Integer weight) {
@@ -124,24 +164,23 @@ public class PackingConfirmation {
      */
     public PackingCommands.Check check(String orderId, ConfirmBox req) {
         byte[] id = UuidUtil.toBytes(orderId);
-        Choice c = choice(req);
+        Choice c = singleChoice(req);
         checkWeight(req.weightG());
         ShippingOrder order = orders.find(id).orElseThrow(NpErrors::orderNotFound);
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(id).orElse(null);
-        Measured m = measure(order, serviceOf(s, order), c, req.weightG());
+        Measured m = measured(order, s, req, c);
         if (s != null && (!(OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s))
-                || sameParcel(s, m.lengthMm(), m.widthMm(), m.heightMm(), m.weightG()))) {
+                || unchanged(s, order, m))) {
             return new PackingCommands.Check(List.of(), List.of());  // only recorded, nothing goes to NP
         }
-        Options o = s == null ? firstWaybill(m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm())
-                : options(s, m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm());
+        Options o = s == null ? firstWaybill(m) : options(s, m);
         Prepared p = preparation.prepare(id, o);
         List<String> problems = new ArrayList<>(p.problems());
         if (s == null && p.unpaid()) {
             problems.add(PackingCommands.unpaidReason(p.amountDueMinor()));
         }
         List<String> warnings = new ArrayList<>(p.warnings());
-        String bulky = c.bag()
+        String bulky = c != null && c.bag()
                 ? BoxOptions.bagVolumeWarning(m.lengthMm(), m.widthMm(), m.heightMm(), m.weightG()) : null;
         if (bulky != null) {
             warnings.add(bulky);
@@ -151,23 +190,22 @@ public class PackingConfirmation {
 
     public Confirmed confirm(String orderId, ConfirmBox req) {
         byte[] id = UuidUtil.toBytes(orderId);
-        Choice c = choice(req);
-        Integer weight = req.weightG();
-        checkWeight(weight);
-        Confirmed done = locks.withOrder(id, () -> confirmLocked(id, c, weight));
+        Choice c = singleChoice(req);
+        checkWeight(req.weightG());
+        Confirmed done = locks.withOrder(id, () -> confirmLocked(id, req, c));
         audit.record("NP_BOX_CONFIRM", "ORDER", orderId, "Коробка «" + done.shipment().packing().boxLabel() + "»"
                 + (done.ttnCreated() ? ", ТТН создана " + done.shipment().ttn() : "")
                 + (done.ttnNumberChanged() ? ", новая ТТН " + done.shipment().ttn() : ""));
         return done;
     }
 
-    private Confirmed confirmLocked(byte[] orderId, Choice c, Integer weightG) {
+    /** {@code c} null = several seats ({@code req.places()}). */
+    private Confirmed confirmLocked(byte[] orderId, ConfirmBox req, Choice c) {
         ShippingOrder order = orders.find(orderId).orElseThrow(NpErrors::orderNotFound);
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId).orElse(null);
         String confirmedBefore = s != null && s.getBoxConfirmedAt() != null ? s.getBoxLabel() : null;
-        Measured m = measure(order, serviceOf(s, order), c, weightG);
+        Measured m = measured(order, s, req, c);
         int height = m.heightMm();
-        int weight = m.weightG();
         int[] folded = m.folded();
         int length = m.lengthMm();
         int width = m.widthMm();
@@ -185,18 +223,17 @@ public class PackingConfirmation {
         }
         if (s == null) {
             // Packed first, the waybill now: its box and weight are what is really in hand.
-            target = creation.createHeld(orderId, firstWaybill(weight, length, width, height));
-        } else if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)
-                && !sameParcel(s, length, width, height, weight)) {
-            target = editing.updateHeld(orderId, options(s, weight, length, width, height));
+            target = creation.createHeld(orderId, firstWaybill(m));
+        } else if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s) && !unchanged(s, order, m)) {
+            target = editing.updateHeld(orderId, options(s, m));
             updated = true;
         }
         boolean created = s == null;
         boolean numberChanged = !created && !s.getTtn().equals(target.getTtn());
-        NpBox box = c.box() != null ? c.box()
+        NpBox box = c == null ? null : c.box() != null ? c.box()
                 : c.saveAsBox() ? catalog.saveOwn(ownName(c, height), c.lengthMm(), c.widthMm(), height, c.bag()) : null;
-        String label = (box != null ? BoxOptions.option(box, height).label() : c.bag() ? bagLabel(c.name(),
-                c.lengthMm(), c.widthMm()) : customLabel(c.name(), c.lengthMm(), c.widthMm(), height))
+        String label = c == null ? m.label() : (box != null ? BoxOptions.option(box, height).label() : c.bag()
+                ? bagLabel(c.name(), c.lengthMm(), c.widthMm()) : customLabel(c.name(), c.lengthMm(), c.widthMm(), height))
                 + (folded == null ? "" : " · сложить до " + BoxOptions.cm(length) + "×" + BoxOptions.cm(width) + " см");
         byte[] boxId = box == null ? null : box.getId();
         Instant now = clock.instant();
@@ -209,8 +246,9 @@ public class PackingConfirmation {
                 x.setBoxSuggestedSource(s.getBoxSuggestedSource());
             }
         });
-        if (label.equals(confirmedBefore)) {
+        if (c == null || label.equals(confirmedBefore)) {
             // Confirmed again (a double tap, the weight added later): the goods taught us this box once already.
+            // Several seats teach nothing: the memory suggests one box for these goods.
             return done(target, order, updated, created, numberChanged, label);
         }
         String key = boxId != null ? PackingMemoryEntry.boxKey(UuidUtil.toString(boxId), height)
@@ -229,18 +267,24 @@ public class PackingConfirmation {
     }
 
     /** The first waybill of a packed parcel: this box and weight, everything else from the order and settings. */
-    static Options firstWaybill(int weightG, int lengthMm, int widthMm, int heightMm) {
-        return new Options(null, weightG, lengthMm, widthMm, heightMm, null, null, null, null, null, null, null,
-                false, null);
+    private static Options firstWaybill(Measured m) {
+        return new Options(null, m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm(), null, null, null, null, null,
+                null, null, false, null, m.seats());
     }
 
     /**
      * The waybill already says this box and weight: nothing to send — above all, a printed one is not remade (its
-     * label on the parcel stays valid).
+     * label on the parcel stays valid). The row keeps the first seat's sides only, so several seats are the same when
+     * their label is; and they are remade after the order changed, as the automatic update leaves them alone.
      */
-    static boolean sameParcel(OrderShipment s, int lengthMm, int widthMm, int heightMm, int weightG) {
-        return Objects.equals(s.getLengthMm(), lengthMm) && Objects.equals(s.getWidthMm(), widthMm)
-                && Objects.equals(s.getHeightMm(), heightMm) && Objects.equals(s.getWeightG(), weightG);
+    private static boolean unchanged(OrderShipment s, ShippingOrder order, Measured m) {
+        boolean sides = Objects.equals(s.getLengthMm(), m.lengthMm()) && Objects.equals(s.getWidthMm(), m.widthMm())
+                && Objects.equals(s.getHeightMm(), m.heightMm()) && Objects.equals(s.getWeightG(), m.weightG());
+        if (m.label() == null) {
+            return sides && !PackingPlaces.multi(s.getBoxLabel());
+        }
+        return sides && s.getBoxConfirmedAt() != null && m.label().equals(s.getBoxLabel())
+                && ShipmentFacts.staleReasons(order, s).isEmpty();
     }
 
     /** NP has no parcel yet: the waybill may still change. */
@@ -253,19 +297,22 @@ public class PackingConfirmation {
      * The waybill as it is, with this box and weight: same sender branch, declared value, «collect» choice and
      * cargo type (as the automatic update after an order change).
      */
-    static Options options(OrderShipment s, int weightG, int lengthMm, int widthMm, int heightMm) {
+    private static Options options(OrderShipment s, Measured m) {
         Boolean collect = Boolean.FALSE.equals(s.getCollectCod()) ? Boolean.FALSE : null;
-        return new Options(s.getSenderWarehouseRef(), weightG, lengthMm, widthMm, heightMm, s.getDeclaredMinor(),
-                collect, null, null, null, null, null, true, "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE);
+        return new Options(s.getSenderWarehouseRef(), m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm(),
+                s.getDeclaredMinor(), collect, null, null, null, null, null, true,
+                "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE, m.seats());
     }
 
-    private Choice choice(ConfirmBox req) {
+    /** The one box asked for; null = several seats. */
+    private Choice singleChoice(ConfirmBox req) {
         if (req == null) {
             throw NpErrors.bad("Выберите коробку или впишите размеры");
         }
-        if (req.seats() != null && req.seats() != 1) {
-            throw NpErrors.bad("Пока подтверждается одно место");
-        }
+        return req.multi() ? null : choice(req.single());
+    }
+
+    private Choice choice(Place req) {
         if (req.boxId() != null && !req.boxId().isBlank()) {
             NpBox box = catalog.find(bytes(req.boxId()))
                     .orElseThrow(() -> new DomainException.NotFound(DeliveryError.NP_BOX_NOT_FOUND));

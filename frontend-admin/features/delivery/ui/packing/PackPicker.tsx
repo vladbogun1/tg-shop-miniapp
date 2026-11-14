@@ -39,19 +39,33 @@ function Heights({ box, choice, postomat, onChoice }: { box: NpBox; choice: Pack
   );
 }
 
-function CustomFields({ c, postomat, onChoice }: { c: Custom; postomat: boolean; onChoice: (c: PackChoice) => void }) {
+function customTitle(c: Custom, thickness: boolean): string {
+  if (!c.bag) return "Своя коробка, см (Д × Ш × В)";
+  return thickness ? "Свой пакет или стрейч, см (Д × Ш × толщина)" : "Свой пакет, см (Д × Ш) — толщина по товару";
+}
+
+function CustomFields({ c, postomat, thickness, onChoice }: { c: Custom; postomat: boolean; thickness: boolean; onChoice: (c: PackChoice) => void }) {
   const set = (patch: Partial<Custom>) => onChoice({ ...c, ...patch });
   const [l, w, h] = [toMm(c.l), toMm(c.w), toMm(c.h)];
   // Пакет сервер сложит до ячейки поштомата сам; коробка — нет.
   const tooBig = postomat && !c.bag && !!l && !!w && !!h && !fitsPostomat(l, w, h);
+  const third = !c.bag || thickness;
   return (
     <div className="card-2 flex min-w-0 flex-col gap-2.5 p-3">
       <div className="min-w-0">
-        <div className="field-label mb-1.5">{c.bag ? "Свой пакет, см (Д × Ш) — толщина по товару" : "Своя коробка, см (Д × Ш × В)"}</div>
-        <div className={c.bag ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2"}>
+        <div className="field-label mb-1.5">{customTitle(c, thickness)}</div>
+        <div className={third ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
           <Input aria-label="Длина, см" inputMode="decimal" placeholder="Д" value={c.l} onChange={(e) => set({ l: e.target.value })} />
           <Input aria-label="Ширина, см" inputMode="decimal" placeholder="Ш" value={c.w} onChange={(e) => set({ w: e.target.value })} />
-          {!c.bag && <Input aria-label="Высота, см" inputMode="decimal" placeholder="В" value={c.h} onChange={(e) => set({ h: e.target.value })} />}
+          {third && (
+            <Input
+              aria-label={c.bag ? "Толщина, см" : "Высота, см"}
+              inputMode="decimal"
+              placeholder={c.bag ? "Т" : "В"}
+              value={c.h}
+              onChange={(e) => set({ h: e.target.value })}
+            />
+          )}
         </div>
       </div>
       {tooBig && <p className="text-[12.5px] font-semibold text-[var(--danger)]">Больше 60×40×30 см — в поштомат не влезет</p>}
@@ -68,6 +82,7 @@ export function PackPicker({
   boxes,
   choice,
   postomat = false,
+  thickness = false,
   onChoice,
 }: {
   /** Коробки в наличии. */
@@ -75,6 +90,8 @@ export function PackPicker({
   choice: PackChoice | null;
   /** Посылка в поштомат: не влезающие в ячейку коробки выключены. */
   postomat?: boolean;
+  /** Место из нескольких: у своего пакета вписывается толщина. */
+  thickness?: boolean;
   onChoice: (c: PackChoice) => void;
 }) {
   const selected = choice?.kind === "box" ? boxes.find((b) => b.id === choice.boxId) : undefined;
@@ -103,7 +120,7 @@ export function PackPicker({
         </Chip>
       </div>
       {selected && choice && <Heights box={selected} choice={choice} postomat={postomat} onChoice={onChoice} />}
-      {choice?.kind === "custom" && <CustomFields c={choice} postomat={postomat} onChoice={onChoice} />}
+      {choice?.kind === "custom" && <CustomFields c={choice} postomat={postomat} thickness={thickness} onChoice={onChoice} />}
     </div>
   );
 }

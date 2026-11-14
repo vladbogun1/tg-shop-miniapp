@@ -98,15 +98,51 @@ export function choiceLabel(boxes: NpBox[], c: PackChoice | null): string {
   return b.options.find((o) => o.heightMm === c.heightMm)?.label ?? b.name;
 }
 
-/** Тело POST …/box; null — свои размеры заполнены не полностью. Пустой вес — сервер считает товары + тару. */
-export function confirmBody(c: PackChoice, weight: string): ConfirmBoxBody | null {
+/**
+ * Тело POST …/box; null — свои размеры заполнены не полностью. Пустой вес — сервер считает товары + тару.
+ * `thickness` — место из нескольких: у своего пакета (стрейч на коврике) толщина вписана, а не «по всем товарам».
+ */
+export function confirmBody(c: PackChoice, weight: string, thickness = false): ConfirmBoxBody | null {
   const weightG = intOrNull(weight) ?? undefined;
   if (c.kind === "box") return { boxId: c.boxId, heightMm: c.heightMm ?? undefined, weightG };
   const [lengthMm, widthMm, heightMm] = [toMm(c.l), toMm(c.w), toMm(c.h)];
-  // Свой пакет: только длина и ширина — толщину сервер считает по товару, как у «Пакета НП».
-  if (c.bag) return lengthMm && widthMm ? { custom: { name: c.name.trim() || undefined, lengthMm, widthMm, saveAsBox: c.save, bag: true }, weightG } : null;
+  // Свой пакет: длина и ширина — толщину сервер считает по товару, как у «Пакета НП» (или берёт вписанную).
+  if (c.bag) {
+    if (!lengthMm || !widthMm) return null;
+    const own = thickness && heightMm ? heightMm : undefined;
+    return { custom: { name: c.name.trim() || undefined, lengthMm, widthMm, heightMm: own, saveAsBox: c.save, bag: true }, weightG };
+  }
   if (!lengthMm || !widthMm || !heightMm) return null;
   return { custom: { name: c.name.trim() || undefined, lengthMm, widthMm, heightMm, saveAsBox: c.save }, weightG };
+}
+
+/** Ещё одно место посылки (коврик в стрейче отдельно от мышки в коробке): своя коробка и вес. */
+export interface PackPlace {
+  choice: PackChoice | null;
+  weight: string;
+}
+
+/**
+ * Тело «Упаковано» на несколько мест одной ТТН: первое — выбор над списком, остальные — добавленные;
+ * null — у какого-то места не выбрана коробка или не дописаны размеры.
+ */
+export function placesBody(first: PackChoice, firstWeight: string, more: PackPlace[]): ConfirmBoxBody | null {
+  const all = [{ choice: first, weight: firstWeight }, ...more].map((p) => (p.choice ? confirmBody(p.choice, p.weight, true) : null));
+  if (all.some((b) => !b)) return null;
+  return { places: all.map((b) => ({ boxId: b?.boxId, heightMm: b?.heightMm, custom: b?.custom, weightG: b?.weightG })) };
+}
+
+/** Тело «Упаковано»: одно место или несколько (`more` — места после первого); null — выбрано не всё. */
+export function packBody(first: PackChoice | null, weight: string, more: PackPlace[]): ConfirmBoxBody | null {
+  if (!first) return null;
+  return more.length > 0 ? placesBody(first, weight, more) : confirmBody(first, weight);
+}
+
+/** «2 места», «5 мест». */
+export function placesWord(n: number): string {
+  const [tens, last] = [n % 100, n % 10];
+  if ((tens >= 11 && tens <= 14) || last === 0 || last >= 5) return `${n} мест`;
+  return last === 1 ? `${n} место` : `${n} места`;
 }
 
 /** Новая Почта уже приняла посылку (код статуса ≥ 4): ТТН не меняется, коробка только записывается. */

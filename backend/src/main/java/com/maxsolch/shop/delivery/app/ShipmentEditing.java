@@ -168,6 +168,11 @@ public class ShipmentEditing {
     }
 
     private boolean syncNow(byte[] orderId, OrderShipment s, boolean goodsChanged) {
+        if (!goodsChanged && PackingPlaces.multi(s.getBoxLabel())) {
+            // The row keeps one seat's sides: remade from it, a parcel of several seats would become one.
+            store.syncError(s.getId(), "ТТН на несколько мест не обновляется сама — нажмите «Переупаковать» и «Упаковано»");
+            return false;
+        }
         // Collect: an explicit «no» stays «no»; otherwise whatever the order still owes.
         Boolean collect = Boolean.FALSE.equals(s.getCollectCod()) ? Boolean.FALSE : null;
         Options o = new Options(s.getSenderWarehouseRef(),
