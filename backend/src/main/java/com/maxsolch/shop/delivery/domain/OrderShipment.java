@@ -199,6 +199,10 @@ public class OrderShipment {
     @Column(name = "np_measured_at")
     private Instant npMeasuredAt;
 
+    /** The seats of a waybill of two or more as sent to NP (V104), a JSON list of {@code Parcel.Seat}; null = one. */
+    @Column(name = "seats_json", columnDefinition = "JSON")
+    private String seatsJson;
+
     /** What NP collected through «Контроль оплати» at pickup (V102); null = not known yet. */
     @Column(name = "np_collected_minor")
     private Long npCollectedMinor;

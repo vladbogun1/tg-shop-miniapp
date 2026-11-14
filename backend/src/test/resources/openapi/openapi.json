@@ -6650,6 +6650,12 @@
           "remeasured" : {
             "type" : "boolean"
           },
+          "seats" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryParcelSeat"
+            },
+            "type" : "array"
+          },
           "shortId" : {
             "type" : "string"
           },
@@ -6687,6 +6693,7 @@
           "npWeightG",
           "orderId",
           "remeasured",
+          "seats",
           "shortId",
           "stage",
           "ttn",
@@ -12830,6 +12837,38 @@
         ],
         "type" : "object"
       },
+      "OrderOrderShipmentViewSeat" : {
+        "properties" : {
+          "box" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "box",
+          "heightMm",
+          "lengthMm",
+          "weightG",
+          "widthMm"
+        ],
+        "type" : "object"
+      },
       "OrderProfitDto" : {
         "properties" : {
           "complete" : {
@@ -13055,6 +13094,13 @@
           "printed" : {
             "type" : "boolean"
           },
+          "seats" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderOrderShipmentViewSeat"
+            },
+            "nullable" : true,
+            "type" : "array"
+          },
           "statusCode" : {
             "nullable" : true,
             "type" : "string"
@@ -13081,6 +13127,7 @@
           "npVolumeWeightG",
           "npWeightG",
           "printed",
+          "seats",
           "statusCode",
           "unconfirmed",
           "waiting"

@@ -78,7 +78,7 @@ public final class ShipmentFacts {
     /** An order to pack before its waybill: only the suggestion, nothing confirmed or printed. */
     static OrderShipmentView.Packing toPack(BoxSuggestion.Suggested s, String waiting) {
         return new OrderShipmentView.Packing(s.label(), s.source(), null, null, null, null, null, false, true, null,
-                null, null, null, null, null, waiting);
+                null, null, null, null, null, waiting, null);
     }
 
     static OrderShipmentView.Packing packing(OrderShipment s, BoxSuggestion.Hint hint) {
@@ -89,6 +89,14 @@ public final class ShipmentFacts {
                 s.getBoxId() == null ? null : UuidUtil.toString(s.getBoxId()), s.getBoxHeightMm(),
                 s.getBoxConfirmedAt(), s.getBoxConfirmedBy(), s.getPrintedAt() != null, open, s.getStatusCode(),
                 s.getNpWeightG(), s.getNpVolumeWeightG(), s.getNpFactualWeightG(), s.getNpCostMinor(),
-                s.getNpMeasuredAt(), null);
+                s.getNpMeasuredAt(), null, seats(s));
+    }
+
+    /** The waybill's seats when there are two or more (as sent); null = one seat. */
+    private static List<OrderShipmentView.Seat> seats(OrderShipment s) {
+        List<OrderShipmentView.Seat> seats = PackingPlaces.stored(s).stream()
+                .map(x -> new OrderShipmentView.Seat(x.weightG(), x.lengthMm(), x.widthMm(), x.heightMm(), x.box()))
+                .toList();
+        return seats.size() > 1 ? seats : null;
     }
 }

@@ -412,6 +412,20 @@ class PackingConfirmationTest {
     }
 
     @Test
+    void theSeatsOwnBoxesAreKeptWhenAsked() {
+        confirmation.confirm(ORDER_ID, new ConfirmBox(null, null, null, null, null, List.of(
+                new Place(null, null, new CustomBox("Короб", 300, 200, 100, true, false), 800),
+                new Place(null, null, new CustomBox("Стрейч", 490, 420, 10, false, true), 700))));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<NpBoxCatalog.OwnBox>> own = ArgumentCaptor.forClass(List.class);
+        verify(catalog).saveOwnAll(own.capture());
+        assertThat(own.getValue()).extracting(NpBoxCatalog.OwnBox::lengthMm, NpBoxCatalog.OwnBox::bag)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(300, false));
+        verify(catalog, never()).saveOwn(anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
+    }
+
+    @Test
     void twoPlacesGoAsTwoSeatsOfOneWaybill() {
         confirmation.confirm(ORDER_ID, mouseAndMat());
 
@@ -423,7 +437,7 @@ class PackingConfirmationTest {
                 new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42×1 см"));
         assertThat(o.getValue().weightG()).isEqualTo(1550);
         assertThat(row.getBoxLabel()).isEqualTo("2 места: Коробка 5 кг · 8 см + Стрейч 49×42×1 см");
-        assertThat(PackingPlaces.multi(row.getBoxLabel())).isTrue();
+        assertThat(PackingPlaces.multi(row)).isTrue();
         verify(memory, never()).remember(any(), any());
     }
 

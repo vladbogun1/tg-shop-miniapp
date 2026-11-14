@@ -8,8 +8,10 @@ import com.maxsolch.shop.delivery.domain.ParcelPacking.Unit;
 import com.maxsolch.shop.delivery.infra.NpBoxRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The boxes the parcel is packed into ({@code np_boxes}, V99): the ones marked «есть у нас», or — while none is
@@ -66,6 +68,31 @@ public class NpBoxCatalog {
         b.setInStock(true);
         b.setSortOrder(nextSortOrder());
         return boxes.save(b);
+    }
+
+    /** A box or bag typed in at packing, to keep in «Мои коробки»; a bag keeps no height (it is the goods'). */
+    record OwnBox(String name, int lengthMm, int widthMm, int heightMm, boolean bag) {
+        String key() {
+            return (bag ? NpBox.KIND_BAG + ":" : NpBox.KIND_BOX + ":") + lengthMm + "x" + widthMm
+                    + (bag ? "" : "x" + heightMm);
+        }
+    }
+
+    /** Several seats' own boxes: each of these sides once, none the catalog already has. */
+    void saveOwnAll(List<OwnBox> own) {
+        if (own.isEmpty()) {
+            return;
+        }
+        Set<String> have = new HashSet<>();
+        for (NpBox b : boxes.findAllByOrderBySortOrderAscNameAsc()) {
+            have.add(b.getKind() + ":" + b.getLengthMm() + "x" + b.getWidthMm()
+                    + (b.getHeightsMm() == null ? "" : "x" + b.getHeightsMm()));
+        }
+        for (OwnBox b : own) {
+            if (have.add(b.key())) {
+                saveOwn(b.name(), b.lengthMm(), b.widthMm(), b.heightMm(), b.bag());
+            }
+        }
     }
 
     int nextSortOrder() {

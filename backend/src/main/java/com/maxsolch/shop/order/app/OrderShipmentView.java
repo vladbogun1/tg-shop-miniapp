@@ -122,6 +122,7 @@ public interface OrderShipmentView {
      * @param npVolumeWeightG    NP's volumetric weight (VolumeWeight), g
      * @param npFactualWeightG   NP's scales (FactualWeight), g
      * @param npCostMinor        NP's delivery price after acceptance (DocumentCost), kopecks
+     * @param seats              the seats of a waybill of two or more as sent (V104); null = one seat
      */
     record Packing(
             @Nullable String boxSuggested,
@@ -139,6 +140,11 @@ public interface OrderShipmentView {
             @Nullable Integer npFactualWeightG,
             @Nullable Long npCostMinor,
             @Nullable Instant npMeasuredAt,
-            @Nullable String waiting) {
+            @Nullable String waiting,
+            @Nullable List<Seat> seats) {
+    }
+
+    /** One seat of a waybill: grams with its box, millimetres, the box's name. */
+    record Seat(int weightG, int lengthMm, int widthMm, int heightMm, @Nullable String box) {
     }
 }

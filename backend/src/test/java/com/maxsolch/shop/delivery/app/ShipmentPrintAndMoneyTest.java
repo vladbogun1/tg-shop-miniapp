@@ -123,6 +123,28 @@ class ShipmentPrintAndMoneyTest {
         ShipmentEditing.refuseOneSeatForSeveral(null, Options.defaults());
     }
 
+    @Test
+    void storedSeatsGoAgainAfterAMoneyChangeButNotAfterAGoodsChange() {
+        List<Parcel.Seat> seats = List.of(new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),
+                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42×1 см"));
+        OrderShipment s = NpFixtures.api(ShipmentStage.CREATED);
+        s.setSeatsJson(PackingPlaces.json(Parcel.of(seats, "t", 0)));
+
+        assertThat(PackingPlaces.stored(s)).isEqualTo(seats);
+        assertThat(PackingPlaces.multi(s)).isTrue();
+        assertThat(ShipmentEditing.manualOnly(s, false)).isNull();
+        assertThat(ShipmentEditing.manualOnly(s, true)).contains("Состав заказа изменился");
+        // The form sends the seats back: allowed; without them it is refused.
+        ShipmentEditing.refuseOneSeatForSeveral(s, new Options(null, null, null, null, null, null, null, null, null,
+                null, null, null, false, null, seats));
+        assertThatThrownBy(() -> ShipmentEditing.refuseOneSeatForSeveral(s, Options.defaults()))
+                .isInstanceOf(DomainException.Conflict.class);
+        // One seat keeps nothing; a broken value reads as none.
+        assertThat(PackingPlaces.json(new Parcel(1000, 300, 200, 100, "t"))).isNull();
+        s.setSeatsJson("{oops");
+        assertThat(PackingPlaces.stored(s)).isEmpty();
+    }
+
     // --- 3
 
     private static Prepared prepare(ShippingOrder order) {

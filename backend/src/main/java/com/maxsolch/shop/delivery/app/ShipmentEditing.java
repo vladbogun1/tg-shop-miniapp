@@ -5,6 +5,7 @@ import com.maxsolch.shop.delivery.app.ShipmentCommands.Options;
 import com.maxsolch.shop.delivery.domain.DeliveryError;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaException;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.ShipmentOrders;
@@ -13,6 +14,8 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * «Змінити ТТН» / «Пересоздать ТТН» and keeping a waybill in step with its order. Only before NP has the parcel.
@@ -57,7 +60,7 @@ public class ShipmentEditing {
      */
     static void refuseOneSeatForSeveral(OrderShipment s, Options opt) {
         boolean ownSeats = opt != null && opt.ownSeats();
-        if (s != null && !ownSeats && PackingPlaces.multi(s.getBoxLabel())) {
+        if (s != null && !ownSeats && PackingPlaces.multi(s)) {
             throw new DomainException.Conflict(DeliveryError.NP_REFUSED, "Это ТТН на несколько мест: здесь она стала бы "
                     + "одним местом. Меняйте её в блоке упаковки — «Переупаковать» и «Упаковано»");
         }
@@ -189,11 +192,13 @@ public class ShipmentEditing {
         }
         // Collect: an explicit «no» stays «no»; otherwise whatever the order still owes.
         Boolean collect = Boolean.FALSE.equals(s.getCollectCod()) ? Boolean.FALSE : null;
+        // Several seats go again as they were sent (manualOnly let them through only with the goods the same).
+        List<Parcel.Seat> seats = PackingPlaces.stored(s);
         Options o = new Options(s.getSenderWarehouseRef(),
                 goodsChanged ? null : s.getWeightG(), goodsChanged ? null : s.getLengthMm(),
                 goodsChanged ? null : s.getWidthMm(), goodsChanged ? null : s.getHeightMm(),
                 null, collect, null, null, null, null, null,
-                true, "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE);
+                true, "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE, seats.size() > 1 ? seats : null);
         try {
             if (update(orderId, o, false) == null) {
                 log.info("NP waybill {} was printed meanwhile: not remade automatically", s.getTtn());
@@ -213,15 +218,17 @@ public class ShipmentEditing {
     }
 
     /**
-     * Why the waybill is not remade automatically, or null. Several seats: the row keeps one seat's sides, so remade
-     * from it (goods the same) or from a fresh suggestion (goods changed) the parcel would quietly become one seat.
+     * Why the waybill is not remade automatically, or null. Several seats go again as stored; other goods may not fit
+     * them (the packer decides), and a row of v3.71 keeps one seat's sides only — remade, they would become one seat.
      */
     static String manualOnly(OrderShipment s, boolean goodsChanged) {
-        if (!PackingPlaces.multi(s.getBoxLabel())) {
+        if (!PackingPlaces.multi(s)) {
             return null;
         }
-        return goodsChanged
-                ? "Состав заказа изменился, а ТТН на несколько мест — нажмите «Переупаковать» и «Упаковано»"
+        if (goodsChanged) {
+            return "Состав заказа изменился, а ТТН на несколько мест — нажмите «Переупаковать» и «Упаковано»";
+        }
+        return PackingPlaces.stored(s).size() > 1 ? null
                 : "ТТН на несколько мест не обновляется сама — нажмите «Переупаковать» и «Упаковано»";
     }
 

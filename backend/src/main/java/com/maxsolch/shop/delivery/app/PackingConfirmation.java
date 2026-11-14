@@ -98,7 +98,7 @@ public class PackingConfirmation {
      * seats: the first seat's sides, the whole weight, every seat and their label.
      */
     private record Measured(int lengthMm, int widthMm, int heightMm, int weightG, int[] folded, List<Parcel.Seat> seats,
-                            String label) {
+                            String label, List<NpBoxCatalog.OwnBox> own) {
     }
 
     private Measured measure(ShippingOrder order, String service, Choice c, Integer weightG) {
@@ -111,7 +111,7 @@ public class PackingConfirmation {
         int[] cell = c.bag() ? postomats.cell(service, order) : null;
         int[] folded = cell == null ? null : BoxOptions.foldBag(sides[0], sides[1], height, units, cell);
         return new Measured(folded == null ? sides[0] : folded[0], folded == null ? sides[1] : folded[1],
-                height, weight, folded, null, null);
+                height, weight, folded, null, null, List.of());
     }
 
     /** Several seats: each its box or sides; a weight not typed is the goods' weight shared equally + the tare. */
@@ -122,6 +122,7 @@ public class PackingConfirmation {
         List<Unit> units = parcels.units(order);
         int share = (int) Math.ceil(units.stream().mapToInt(Unit::weightG).sum() / (double) places.size());
         List<Parcel.Seat> seats = new ArrayList<>();
+        List<NpBoxCatalog.OwnBox> own = new ArrayList<>();
         for (Place p : places) {
             if (p == null) {
                 throw NpErrors.bad("Место " + (seats.size() + 1) + ": выберите коробку или впишите размеры");
@@ -133,11 +134,14 @@ public class PackingConfirmation {
             String name = c.box() != null ? BoxOptions.option(c.box(), h).label()
                     : customLabel(c.name() != null ? c.name() : c.bag() ? "Свой пакет" : null, c.lengthMm(), c.widthMm(), h);
             seats.add(new Parcel.Seat(p.weightG() != null ? p.weightG() : share + c.tareG(), c.lengthMm(), c.widthMm(), h, name));
+            if (c.box() == null && c.saveAsBox()) {
+                own.add(new NpBoxCatalog.OwnBox(ownName(c, h), c.lengthMm(), c.widthMm(), h, c.bag()));
+            }
         }
         Parcel.Seat first = seats.get(0);
         return new Measured(first.lengthMm(), first.widthMm(), first.heightMm(),
                 seats.stream().mapToInt(Parcel.Seat::weightG).sum(), null, seats,
-                PackingPlaces.label(seats.stream().map(Parcel.Seat::box).toList()));
+                PackingPlaces.label(seats.stream().map(Parcel.Seat::box).toList()), own);
     }
 
     /** A bag of one seat: as thick as typed in for an own bag (a mat in stretch film), else as the goods. */
@@ -247,6 +251,7 @@ public class PackingConfirmation {
                 x.setBoxSuggestedSource(s.getBoxSuggestedSource());
             }
         });
+        catalog.saveOwnAll(m.own());
         if (c == null || label.equals(confirmedBefore)) {
             // Confirmed again (a double tap, the weight added later): the goods taught us this box once already.
             // Several seats teach nothing: the memory suggests one box for these goods.
@@ -282,7 +287,7 @@ public class PackingConfirmation {
         boolean sides = Objects.equals(s.getLengthMm(), m.lengthMm()) && Objects.equals(s.getWidthMm(), m.widthMm())
                 && Objects.equals(s.getHeightMm(), m.heightMm()) && Objects.equals(s.getWeightG(), m.weightG());
         if (m.label() == null) {
-            return sides && !PackingPlaces.multi(s.getBoxLabel());
+            return sides && !PackingPlaces.multi(s);
         }
         return sides && s.getBoxConfirmedAt() != null && m.label().equals(s.getBoxLabel())
                 && ShipmentFacts.staleReasons(order, s).isEmpty();

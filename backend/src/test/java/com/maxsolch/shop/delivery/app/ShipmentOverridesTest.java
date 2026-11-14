@@ -56,8 +56,8 @@ class ShipmentOverridesTest {
         assertThat(PackingPlaces.label(List.of("A", "B"))).isEqualTo("2 места: A + B");
         assertThat(PackingPlaces.label(List.of("A", "B", "C", "D", "E"))).startsWith("5 мест: ");
         assertThat(PackingPlaces.label(List.of("x".repeat(80), "y".repeat(80)))).hasSize(120).endsWith("…");
-        assertThat(PackingPlaces.multi("2 места: A + B")).isTrue();
-        assertThat(PackingPlaces.multi("Коробка 5 кг · 8 см")).isFalse();
-        assertThat(PackingPlaces.multi(null)).isFalse();
+        assertThat(PackingPlaces.multiLabel("2 места: A + B")).isTrue();
+        assertThat(PackingPlaces.multiLabel("Коробка 5 кг · 8 см")).isFalse();
+        assertThat(PackingPlaces.multiLabel(null)).isFalse();
     }
 }

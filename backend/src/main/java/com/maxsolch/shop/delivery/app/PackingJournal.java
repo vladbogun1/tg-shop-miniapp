@@ -1,6 +1,7 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.app.ShippingOrder;
@@ -53,13 +54,14 @@ public class PackingJournal {
      * @param npCostMinor      NP's price after it took the parcel (DocumentCost)
      * @param mismatch         the packer confirmed a different box than the one suggested
      * @param remeasured       NP charged a weight > 15 % off ours (max of real and volumetric) or another price
+     * @param seats            two or more seats as sent; null = one (its weight and sides above)
      */
     public record Row(String orderId, String shortId, String ttn, String stage, List<String> goods,
                       String boxSuggested, String boxSuggestedSource, String boxLabel, Instant boxConfirmedAt,
                       String boxConfirmedBy, Integer weightG, Integer lengthMm, Integer widthMm, Integer heightMm,
                       Long deliveryCostMinor, Integer npWeightG, Integer npVolumeWeightG, Integer npFactualWeightG,
                       Long npCostMinor, Instant npMeasuredAt, boolean mismatch, boolean remeasured,
-                      Instant createdAt) {
+                      Instant createdAt, List<Parcel.Seat> seats) {
     }
 
     public record Journal(int days, List<Row> rows) {
@@ -90,7 +92,7 @@ public class PackingJournal {
                 s.getBoxLabel(), s.getBoxConfirmedAt(), s.getBoxConfirmedBy(), s.getWeightG(), s.getLengthMm(),
                 s.getWidthMm(), s.getHeightMm(), s.getDeliveryCostMinor(), s.getNpWeightG(), s.getNpVolumeWeightG(),
                 s.getNpFactualWeightG(), s.getNpCostMinor(), s.getNpMeasuredAt(), mismatch(s), remeasured(s),
-                s.getCreatedAt());
+                s.getCreatedAt(), seatsOrNull(s));
     }
 
     private static List<String> goods(ShippingOrder order) {
@@ -118,8 +120,21 @@ public class PackingJournal {
         return weight || cost;
     }
 
-    /** max(declared weight, L×W×H / 4000) in grams; null when nothing was declared. */
+    private static List<Parcel.Seat> seatsOrNull(OrderShipment s) {
+        List<Parcel.Seat> seats = PackingPlaces.stored(s);
+        return seats.size() > 1 ? seats : null;
+    }
+
+    /**
+     * max(declared weight, L×W×H / 4000) in grams; null when nothing was declared. Several seats: NP prices each seat
+     * on its own (two seats of 90 ₴ cost 180 ₴), so each counts its own larger weight and they add up.
+     */
     static Integer declaredChargeable(OrderShipment s) {
+        List<Parcel.Seat> seats = PackingPlaces.stored(s);
+        if (seats.size() > 1) {
+            return seats.stream().mapToInt(x -> (int) Math.max(x.weightG(),
+                    (long) x.lengthMm() * x.widthMm() * x.heightMm() / VOLUME_DIVISOR)).sum();
+        }
         Integer w = s.getWeightG();
         if (s.getLengthMm() == null || s.getWidthMm() == null || s.getHeightMm() == null) {
             return w;
