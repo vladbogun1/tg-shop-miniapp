@@ -39,6 +39,8 @@ export function runPlanKey(key: PlanKey, { show, requestStatus, onUnarchive }: A
       return show("exchange");
     case "received":
       return show("received");
+    case "newOrder":
+      return show("newOrder");
     case "archive":
       return show("archive");
     case "unarchive":

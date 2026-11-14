@@ -10,7 +10,7 @@ export function useCreateOrder(onCreated: (orderId: string) => void, onFail: (me
   return useApiMutation({
     mutationFn: (body: AdminCreateOrderBody) => orderApi.create(body),
     success: "Заказ создан",
-    invalidate: [orderKeys.board(), orderKeys.table(), orderKeys.inbox()],
+    invalidate: [orderKeys.board(), orderKeys.table(), orderKeys.inbox(), orderKeys.userOrders()],
     onSuccess: (order) => onCreated(order.id),
     onError: (e) => onFail(errorMessage(e, undefined, "Не удалось создать заказ")),
   });

@@ -95,6 +95,7 @@ export function Autocomplete<T>({
           <span className="truncate text-[14px] font-semibold text-[var(--accent-hi)]">{selectedLabel}</span>
           <button
             type="button"
+            aria-label={label ? `Очистить «${label}»` : "Очистить"}
             onClick={() => {
               onClear?.();
               setQ("");

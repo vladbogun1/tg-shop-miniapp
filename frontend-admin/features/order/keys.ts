@@ -22,4 +22,8 @@ export const orderKeys = {
   productsActive: () => ["products", false] as const,
   metrics: () => ["metrics2"] as const,
   giftTiers: () => ["gift", "tiers"] as const,
+  /** Заказы покупателя в его профиле (фича «Покупатели»). */
+  userOrders: () => ["user-orders"] as const,
+  /** Последний заказ покупателя — с ним открывается «Новый заказ» из профиля. */
+  lastOrderOf: (tgId: number | null) => ["new-order-last", tgId] as const,
 };

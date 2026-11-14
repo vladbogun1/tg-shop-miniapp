@@ -3,6 +3,7 @@ import type { MovementChannel } from "@/features/payment";
 import type { Product, ProductVariant } from "@shop/core/types";
 import { toMinor } from "@/lib/money";
 import type { AdminCreateOrderBody } from "../api";
+import type { NpService, Place, StreetPick } from "./delivery-edit";
 
 export type Delivery = "NOVA_POSHTA" | "PICKUP";
 export type PaidChannel = Extract<MovementChannel, "CARD_TRANSFER" | "CASH" | "NP_COD" | "MONO" | "OTHER">;
@@ -29,15 +30,23 @@ export interface OrderLine {
 
 export const qtyOf = (l: OrderLine) => Math.max(0, parseInt(l.qtyText, 10) || 0);
 
-/** Поля формы ручного заказа (строки товаров — отдельно, это выбор из поиска, а не поле). */
+/**
+ * Поля формы ручного заказа (строки товаров — отдельно, это выбор из поиска, а не поле).
+ * Адрес НП — как в окне «Получатель и доставка»: город и отделение из справочника (сервер требует их ref),
+ * для курьера — улица, дом, квартира.
+ */
 export interface NewOrderValues {
   name: string;
   phone: string;
   comment: string;
   promo: string;
   delivery: Delivery;
-  city: string;
-  warehouse: string;
+  service: NpService;
+  city: Place | null;
+  wh: Place | null;
+  street: StreetPick | null;
+  building: string;
+  flat: string;
   paymentId: string;
   paidText: string;
   channel: PaidChannel;
@@ -52,8 +61,12 @@ export const EMPTY_NEW_ORDER: NewOrderValues = {
   comment: "",
   promo: "",
   delivery: "NOVA_POSHTA",
-  city: "",
-  warehouse: "",
+  service: "WAREHOUSE",
+  city: null,
+  wh: null,
+  street: null,
+  building: "",
+  flat: "",
   paymentId: "",
   paidText: "",
   channel: "CARD_TRANSFER",
@@ -83,6 +96,13 @@ export function isTgIdValid(tgId: string): boolean {
   return !tgId.trim() || /^\d{1,18}$/.test(tgId.trim());
 }
 
+/** Самовывоз — адрес не нужен; НП — город и отделение (почтомат) из справочника или улица и дом для курьера. */
+export function isNpAddressReady(v: NewOrderValues): boolean {
+  if (v.delivery !== "NOVA_POSHTA") return true;
+  if (!v.city) return false;
+  return v.service === "DOORS" ? !!v.street?.name.trim() && !!v.building.trim() : !!v.wh;
+}
+
 export function canSubmitOrder(lines: OrderLine[], v: NewOrderValues): boolean {
   return (
     lines.length > 0 &&
@@ -91,16 +111,37 @@ export function canSubmitOrder(lines: OrderLine[], v: NewOrderValues): boolean {
     v.phone.trim().length > 0 &&
     !!v.paymentId &&
     isTgIdValid(v.tgId) &&
+    isNpAddressReady(v) &&
     paidMinorOf(v) >= 0
   );
 }
 
-export function isOrderDirty(lines: OrderLine[], v: NewOrderValues): boolean {
-  return lines.length > 0 || !!v.name || !!v.phone || !!v.comment || !!v.promo || !!v.note;
+/** Есть что терять при закрытии: товары или поля, изменённые относительно того, с чем окно открылось. */
+export function isOrderDirty(lines: OrderLine[], v: NewOrderValues, start: NewOrderValues = EMPTY_NEW_ORDER): boolean {
+  return lines.length > 0 || JSON.stringify(v) !== JSON.stringify(start);
+}
+
+/** Имя получателя латиницей: НП такую ТТН не создаст. */
+export function isLatinName(name: string): boolean {
+  return /[a-z]/i.test(name) && !/[а-яіїєґ]/i.test(name);
+}
+
+function npFields(v: NewOrderValues): Partial<AdminCreateOrderBody> {
+  if (v.delivery !== "NOVA_POSHTA" || !v.city) return {};
+  const base = { npServiceType: v.service, npCityRef: v.city.ref, npCityName: v.city.name };
+  if (v.service !== "DOORS") {
+    return v.wh ? { ...base, npWarehouseRef: v.wh.ref, npWarehouseName: v.wh.name } : base;
+  }
+  return {
+    ...base,
+    npStreetRef: v.street?.ref ?? undefined,
+    npStreetName: v.street?.name.trim() || undefined,
+    npBuilding: v.building.trim() || undefined,
+    npFlat: v.flat.trim() || undefined,
+  };
 }
 
 export function buildCreateBody(lines: OrderLine[], v: NewOrderValues): AdminCreateOrderBody {
-  const nova = v.delivery === "NOVA_POSHTA";
   return {
     items: lines.map((l) => ({ productId: l.product.id, variantId: l.variant?.id ?? null, quantity: qtyOf(l) })),
     customerName: v.name.trim(),
@@ -108,8 +149,7 @@ export function buildCreateBody(lines: OrderLine[], v: NewOrderValues): AdminCre
     comment: v.comment.trim() || undefined,
     promoCode: v.promo.trim() || undefined,
     deliveryMethod: v.delivery,
-    npCityName: nova && v.city.trim() ? v.city.trim() : undefined,
-    npWarehouseName: nova && v.warehouse.trim() ? v.warehouse.trim() : undefined,
+    ...npFields(v),
     paymentOptionId: v.paymentId,
     tgUserId: v.tgId.trim() ? Number(v.tgId.trim()) : undefined,
     paidMinor: paidMinorOf(v),

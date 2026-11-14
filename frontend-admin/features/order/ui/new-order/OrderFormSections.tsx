@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
-import { CHANNEL_OPTIONS, DELIVERY_OPTIONS, type Delivery, type NewOrderValues, type PaidChannel } from "../../model/new-order";
+import { CHANNEL_OPTIONS, DELIVERY_OPTIONS, isLatinName, type Delivery, type NewOrderValues, type PaidChannel } from "../../model/new-order";
+import { NpAddressFields, type HouseInput } from "../modals/NpAddressFields";
 
 interface SectionProps {
   values: NewOrderValues;
@@ -22,6 +23,7 @@ export function CustomerSection({ values: v, onChange }: SectionProps) {
         value={v.tgId}
         onChange={(e) => onChange({ tgId: e.target.value.replace(/\D/g, "").slice(0, 18) })}
         placeholder="если он уже писал боту"
+        hint="Тогда заказ будет и в его кабинете"
       />
       <Input label="Промокод" value={v.promo} onChange={(e) => onChange({ promo: e.target.value })} autoComplete="off" />
       <div className="sm:col-span-2">
@@ -31,16 +33,30 @@ export function CustomerSection({ values: v, onChange }: SectionProps) {
   );
 }
 
-export function DeliverySection({ values: v, onChange, onDelivery }: SectionProps & { onDelivery: (d: Delivery) => void }) {
+export function DeliverySection({
+  values: v,
+  onChange,
+  onDelivery,
+  legacyAddress,
+}: SectionProps & { onDelivery: (d: Delivery) => void; legacyAddress: string | null }) {
+  const houseInput: HouseInput = (field) => ({
+    value: v[field],
+    onChange: (e) => onChange(field === "building" ? { building: e.target.value } : { flat: e.target.value }),
+  });
+  const nova = v.delivery === "NOVA_POSHTA";
   return (
     <section className="flex flex-col gap-3">
       <span className="field-label">Доставка</span>
       <SegmentedControl options={DELIVERY_OPTIONS} value={v.delivery} onChange={onDelivery} className="h-10" />
-      {v.delivery === "NOVA_POSHTA" && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input label="Город" value={v.city} onChange={(e) => onChange({ city: e.target.value })} />
-          <Input label="Отделение" value={v.warehouse} onChange={(e) => onChange({ warehouse: e.target.value })} />
-        </div>
+      {nova && legacyAddress && !v.city && (
+        <p className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[12.5px] leading-snug text-[var(--text-muted)]">
+          В прошлом заказе адрес записан текстом: <span className="font-semibold text-[var(--text)]">{legacyAddress}</span>. Выберите город и
+          отделение из справочника ниже.
+        </p>
+      )}
+      {nova && <NpAddressFields value={v} onChange={onChange} houseInput={houseInput} />}
+      {nova && isLatinName(v.name) && (
+        <p className="text-[12px] text-[var(--danger-ink)]">Имя латиницей — Новая почта не создаст ТТН. Напишите имя кириллицей.</p>
       )}
     </section>
   );

@@ -99,9 +99,18 @@ export interface AdminCreateOrderBody {
   comment?: string;
   promoCode?: string;
   deliveryMethod: "NOVA_POSHTA" | "PICKUP";
+  /** НП: город и отделение — из справочника (ref обязателен), для курьера — улица, дом, квартира. */
+  npServiceType?: "WAREHOUSE" | "POSTOMAT" | "DOORS";
+  npCityRef?: string;
   npCityName?: string;
+  npWarehouseRef?: string;
   npWarehouseName?: string;
+  npStreetRef?: string;
+  npStreetName?: string;
+  npBuilding?: string;
+  npFlat?: string;
   paymentOptionId: string;
+  /** Telegram id: бот пишет покупателю, а при аккаунте заказ попадает в его «Мої замовлення». */
   tgUserId?: number;
   /** Копейки, уже полученные; 0 = ещё не оплачен. */
   paidMinor: number;

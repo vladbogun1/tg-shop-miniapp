@@ -162,6 +162,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         menuGroups={menuGroups}
         restockUnits={rules.restockUnits}
         refreshLists={refreshLists}
+        jumpTo={setJumped}
       />
 
       {productTools.ui}

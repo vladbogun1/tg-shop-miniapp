@@ -6,7 +6,16 @@
 import type { OrderStatus } from "@shop/core/types";
 import type { DrawerRules } from "./drawer-rules";
 
-export type PlanKey = "pay" | "return" | "merge" | "exchange" | "received" | "archive" | "unarchive" | `status:${OrderStatus}`;
+export type PlanKey =
+  | "pay"
+  | "return"
+  | "merge"
+  | "exchange"
+  | "received"
+  | "newOrder"
+  | "archive"
+  | "unarchive"
+  | `status:${OrderStatus}`;
 
 export type PlanGroupId = "money" | "order" | "archive";
 
@@ -50,6 +59,8 @@ export function actionPlan(rules: DrawerRules, canMerge: boolean): ActionPlan {
   if (canMerge) order.push("merge");
   if (rules.canExchange) order.push("exchange");
   if (rules.inTransit && primary !== "received") order.push("received");
+  // «Новый заказ этому покупателю»: из любого заказа — покупатель и адрес переносятся в окно ручного заказа.
+  order.push("newOrder");
   const reject = rules.targets.includes("REJECTED");
   if (reject) order.push("status:REJECTED");
 

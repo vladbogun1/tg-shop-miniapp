@@ -7,7 +7,19 @@ import type { OrderStatus } from "@shop/core/types";
 import type { RejectReasonCode } from "../../model/status";
 
 export type ModalName =
-  "pay" | "gift" | "case" | "discount" | "tracking" | "delivery" | "return" | "exchange" | "merge" | "received" | "archive" | "more";
+  | "pay"
+  | "gift"
+  | "case"
+  | "discount"
+  | "tracking"
+  | "delivery"
+  | "return"
+  | "exchange"
+  | "merge"
+  | "received"
+  | "newOrder"
+  | "archive"
+  | "more";
 
 const CLOSED: Record<ModalName, boolean> = {
   pay: false,
@@ -20,12 +32,13 @@ const CLOSED: Record<ModalName, boolean> = {
   exchange: false,
   merge: false,
   received: false,
+  newOrder: false,
   archive: false,
   more: false,
 };
 
 /** Закрываются при открытии карточки другого заказа; подарок, кейс, скидка и слияние переживают смену. */
-const RESET_ON_ORDER: ModalName[] = ["pay", "tracking", "delivery", "return", "exchange", "received", "archive", "more"];
+const RESET_ON_ORDER: ModalName[] = ["pay", "tracking", "delivery", "return", "exchange", "received", "newOrder", "archive", "more"];
 
 export type TabName = "details" | "chat" | "history";
 

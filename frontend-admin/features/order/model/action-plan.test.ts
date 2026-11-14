@@ -26,7 +26,7 @@ describe("actionPlan: матрица статус → действия", () => {
     const p = plan(order({ status: "NEW" }));
     expect(p.primary).toBe("status:APPROVED");
     expect(p.reject).toBe(true);
-    expect(keys(p)).toEqual(["pay", "status:SHIPPED", "status:REJECTED"]);
+    expect(keys(p)).toEqual(["pay", "status:SHIPPED", "newOrder", "status:REJECTED"]);
   });
 
   it("Новый с кандидатом на слияние и переплатой: объединить и возврат", () => {
@@ -51,15 +51,15 @@ describe("actionPlan: матрица статус → действия", () => {
     const d = order({ status: "DELIVERED" });
     const regular = plan(d);
     expect(regular.primary).toBe("return");
-    expect(keys(regular)).toEqual(["pay", "exchange"]);
+    expect(keys(regular)).toEqual(["pay", "exchange", "newOrder"]);
     expect(regular.reject).toBe(false);
-    expect(keys(plan(d, true))).toEqual(["pay", "exchange", "archive"]);
+    expect(keys(plan(d, true))).toEqual(["pay", "exchange", "newOrder", "archive"]);
   });
 
   it("Отклонён без остатка к возврату: главное «Написать клиенту»", () => {
     const p = plan(order({ status: "REJECTED", receivedMinor: 5000, refundedMinor: 5000 }));
     expect(p.primary).toBe("chat");
-    expect(keys(p)).toEqual(["pay"]);
+    expect(keys(p)).toEqual(["pay", "newOrder"]);
   });
 
   it("Посылка едет назад: главное «Посылка вернулась», в меню её нет", () => {
@@ -74,6 +74,6 @@ describe("actionPlan: матрица статус → действия", () => {
       admin: { archivedAt: "2026-10-01T00:00:00Z" },
     });
     expect(keys(plan(a))).not.toContain("unarchive");
-    expect(keys(plan(a, true))).toEqual(["pay", "exchange", "unarchive"]);
+    expect(keys(plan(a, true))).toEqual(["pay", "exchange", "newOrder", "unarchive"]);
   });
 });

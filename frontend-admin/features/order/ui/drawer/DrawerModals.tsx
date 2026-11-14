@@ -1,11 +1,13 @@
 "use client";
 
 /** Все окна над карточкой заказа: листок «⋯», подтверждения, формы, подбор товара, профиль покупателя. */
+import { useMemo, useState } from "react";
 import { ExchangeModal, ReturnModal, ReturnReceivedModal } from "@/features/returns";
 import { PaymentModal } from "@/features/payment";
 import { ActionSheet } from "@/components/ui/ActionSheet";
-import { UserProfileDrawer } from "@/features/customer";
+import { displayName, UserProfileDrawer } from "@/features/customer";
 import type { AdminOrderDetail } from "../../api";
+import type { NewOrderFrom } from "../../model/new-order-prefill";
 import { shortId } from "../../model/status";
 import { ItemPicker } from "../item-picker/ItemPicker";
 import { ArchiveModal } from "../modals/ArchiveModal";
@@ -15,6 +17,7 @@ import { GiftCaseModal } from "../modals/GiftCaseModal";
 import { MenuGroups } from "./MoreMenu";
 import type { MenuGroup } from "./sheet-actions";
 import { MergeModal } from "../modals/MergeModal";
+import { NewOrderModal } from "../new-order/NewOrderModal";
 import { StatusChangeModal } from "../modals/StatusChangeModal";
 import { TrackingModal } from "../modals/TrackingModal";
 import type { DrawerModals as Modals } from "./use-drawer-modals";
@@ -32,6 +35,8 @@ interface Props {
   menuGroups: MenuGroup[];
   restockUnits: number | undefined;
   refreshLists: () => void;
+  /** Open another order in this drawer (the one just created by «Новый заказ этому покупателю»). */
+  jumpTo: (orderId: string) => void;
 }
 
 export function DrawerModals({
@@ -45,9 +50,13 @@ export function DrawerModals({
   menuGroups,
   restockUnits,
   refreshLists,
+  jumpTo,
 }: Props) {
   const { open, hide, pendingTarget, pendingBack, setPendingTarget, profile, setProfile } = modals;
   const o = order ?? null;
+  // «Новый заказ»: from the «Ещё» menu — this order's buyer and address; from the profile — that customer.
+  const [newForCustomer, setNewForCustomer] = useState<NewOrderFrom | null>(null);
+  const newFrom = useMemo<NewOrderFrom | null>(() => newForCustomer ?? (orderId ? { orderId } : null), [newForCustomer, orderId]);
   return (
     <>
       <ActionSheet open={open.more && !isDesktop} title={order ? `Заказ ${shortId(order.id)}` : undefined} onClose={() => hide("more")}>
@@ -146,7 +155,24 @@ export function DrawerModals({
       <DiscountModal open={open.discount} order={o} onClose={() => hide("discount")} onDone={refreshLists} />
 
       {/* The customer's profile opens OVER the order (rendered later → on top), Esc/× return here. */}
-      <UserProfileDrawer user={profile} onClose={() => setProfile(null)} />
+      <UserProfileDrawer
+        user={profile}
+        onClose={() => setProfile(null)}
+        onNewOrder={(u) => setNewForCustomer({ tgId: u.telegramUserId, name: displayName(u) })}
+      />
+
+      <NewOrderModal
+        open={open.newOrder || !!newForCustomer}
+        from={newFrom}
+        onClose={() => {
+          hide("newOrder");
+          setNewForCustomer(null);
+        }}
+        onCreated={(id) => {
+          setProfile(null);
+          jumpTo(id);
+        }}
+      />
     </>
   );
 }

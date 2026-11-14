@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Ban, Check, MessageSquare, Merge, PackageCheck, Repeat, Send, Undo2, WalletMinimal } from "lucide-react";
+import { Archive, ArchiveRestore, Ban, Check, MessageSquare, Merge, PackageCheck, Repeat, Send, ShoppingBag, Undo2, WalletMinimal } from "lucide-react";
 import type { ReactNode } from "react";
 import type { OrderStatus } from "@shop/core/types";
 import type { PlanKey } from "../../model/action-plan";
@@ -62,6 +62,12 @@ export function actionMeta(key: PlanKey | "chat"): {
         icon: <PackageCheck className={ICON_CLASS} />,
         danger: false,
       };
+    case "newOrder":
+      return {
+        label: "Новый заказ этому покупателю",
+        icon: <ShoppingBag className={ICON_CLASS} />,
+        danger: false,
+      };
     case "archive":
       return {
         label: "В архив",
@@ -98,6 +104,7 @@ export function busyKeyOf(key: PlanKey | "chat"): string | null {
     case "return":
     case "merge":
     case "exchange":
+    case "newOrder":
       return null;
     default:
       return key;

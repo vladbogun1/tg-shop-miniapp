@@ -5,6 +5,7 @@
 export { OrdersScreen } from "./ui/OrdersScreen";
 export { OrderDeepLinkScreen } from "./ui/OrderDeepLinkScreen";
 export { OrderDrawer } from "./ui/drawer/OrderDrawer";
+export { NewOrderModal } from "./ui/new-order/NewOrderModal";
 /** Шаблоны ответов (⚡) — общие для чата заказа и чата поддержки. */
 export { QuickTemplates } from "./ui/chat/QuickTemplates";
 export { TemplatePicker } from "./ui/chat/ReplyTemplates";

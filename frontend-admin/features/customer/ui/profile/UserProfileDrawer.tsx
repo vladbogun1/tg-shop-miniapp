@@ -10,7 +10,7 @@
  * Без `onOpenOrder` — переход на этот роут. «Написать» — `onWrite` от страницы (поддержка не импортируется
  * из клиентов: был бы цикл); у заблокировавшего бота кнопка неактивна.
  */
-import { Ban, Crown, Send, PenSquare, ShieldAlert } from "lucide-react";
+import { Ban, Crown, Send, PenSquare, ShieldAlert, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { Drawer } from "@shop/ui/overlay";
@@ -31,6 +31,8 @@ interface Props {
   onOpenOrder?: (orderId: string) => void;
   /** «Написать»: открыть окно нового вопроса поддержки для этого покупателя. */
   onWrite?: (user: UserCardDto) => void;
+  /** «Новый заказ»: окно ручного заказа с этим покупателем (рисует страница или карточка заказа). */
+  onNewOrder?: (user: UserCardDto) => void;
 }
 
 type Tab = "orders" | "data";
@@ -94,7 +96,7 @@ function Summary({ user }: { user: UserCardDto }) {
   );
 }
 
-function Actions({ user, onWrite }: { user: UserCardDto; onWrite?: (u: UserCardDto) => void }) {
+function Actions({ user, onWrite, onNewOrder }: Pick<Props, "onWrite" | "onNewOrder"> & { user: UserCardDto }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -118,6 +120,11 @@ function Actions({ user, onWrite }: { user: UserCardDto; onWrite?: (u: UserCardD
           <Send className="h-4 w-4 text-[var(--accent)]" />
           <span className="max-[359px]:hidden">Открыть в</span> Telegram
         </a>
+        {onNewOrder && (
+          <Button variant="surface" icon={<ShoppingBag className="h-4 w-4 text-[var(--accent)]" />} onClick={() => onNewOrder(user)} className="max-sm:w-full">
+            Новый заказ
+          </Button>
+        )}
       </div>
       {user.botBlocked && onWrite && (
         <p className="text-[12px] text-[var(--danger-ink)]">Клиент заблокировал бота — сообщение не дойдёт.</p>
@@ -130,12 +137,13 @@ function Body({
   user,
   onOpenOrder,
   onWrite,
+  onNewOrder,
   onProblemChanged,
 }: Omit<Props, "onClose"> & { user: UserCardDto; onProblemChanged: (reason: string | null) => void }) {
   const [tab, setTab] = useState<Tab>("orders");
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-5">
-      <Actions user={user} onWrite={onWrite} />
+      <Actions user={user} onWrite={onWrite} onNewOrder={onNewOrder} />
       <ProblemFlag telegramUserId={user.telegramUserId} reason={user.problemReason} onChanged={onProblemChanged} />
       <Summary user={user} />
       <Tabs<Tab>
@@ -151,7 +159,7 @@ function Body({
   );
 }
 
-export function UserProfileDrawer({ user, onClose, onOpenOrder, onWrite }: Props) {
+export function UserProfileDrawer({ user, onClose, onOpenOrder, onWrite, onNewOrder }: Props) {
   // Карточку держит страница; метку, поставленную/снятую здесь, показываем сразу, не дожидаясь списка.
   const [problem, setProblem] = useState<{ id: number; reason: string | null } | null>(null);
   const shown = user && problem?.id === user.telegramUserId ? { ...user, problemReason: problem.reason } : user;
@@ -164,6 +172,7 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder, onWrite }: Props
           user={shown}
           onOpenOrder={onOpenOrder}
           onWrite={onWrite}
+          onNewOrder={onNewOrder}
           onProblemChanged={(reason) => setProblem({ id: shown.telegramUserId, reason })}
         />
       )}
