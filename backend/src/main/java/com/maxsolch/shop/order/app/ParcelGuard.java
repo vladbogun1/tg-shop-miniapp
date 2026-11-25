@@ -30,4 +30,19 @@ public class ParcelGuard {
                     throw new DomainException.BadRequest(OrderError.PARCEL_HANDED_OVER, s.ttn());
                 });
     }
+
+    /**
+     * 400 {@code PICKUP_HAS_WAYBILL} while the order has a live waybill the shop made at NP (origin API): it would stay
+     * there unpaid and untracked. A typed-in one (MANUAL) is only ours to forget.
+     */
+    public void requireNoOwnWaybill(Order order) {
+        if (order.getId() == null) {
+            return;
+        }
+        shipments.forOrder(order.getId())
+                .filter(s -> "API".equals(s.origin()) && !"CANCELLED".equals(s.stage()))
+                .ifPresent(s -> {
+                    throw new DomainException.BadRequest(OrderError.PICKUP_HAS_WAYBILL, s.ttn());
+                });
+    }
 }

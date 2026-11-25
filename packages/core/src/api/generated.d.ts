@@ -2738,7 +2738,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged) */
+        /** Correct recipient name / phone / Nova Poshta address, or switch Nova Poshta <-> pickup (null fields unchanged) */
         patch: operations["AdminOrderController_updateDelivery"];
         trace?: never;
     };
@@ -11664,6 +11664,7 @@ export interface components {
         };
         UpdateDeliveryRequest: {
             customerName?: string;
+            deliveryMethod?: string;
             npBuilding?: string;
             npCityName?: string;
             npCityRef?: string;

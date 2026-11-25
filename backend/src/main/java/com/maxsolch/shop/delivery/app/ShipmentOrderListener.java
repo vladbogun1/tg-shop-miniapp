@@ -63,7 +63,11 @@ class ShipmentOrderListener {
     public void onEdited(OrderEvents.Edited e) {
         switch (e.kind()) {
             case TRACKING -> run(e.orderId(), "tracking", () -> manual.sync(e.orderId()));
-            case COMPOSITION, GIFT, DISCOUNT, SILENT, DETAILS ->
+            case DETAILS -> run(e.orderId(), "edit", () -> {
+                manual.forgetForPickup(e.orderId());
+                editing.syncWithOrder(e.orderId());
+            });
+            case COMPOSITION, GIFT, DISCOUNT, SILENT ->
                     run(e.orderId(), "edit", () -> editing.syncWithOrder(e.orderId()));
             default -> {
                 // a gift case changes neither the parcel nor the money on it

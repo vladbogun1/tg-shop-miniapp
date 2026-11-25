@@ -18453,6 +18453,11 @@
             "minLength" : 0,
             "type" : "string"
           },
+          "deliveryMethod" : {
+            "maxLength" : 16,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "npBuilding" : {
             "maxLength" : 32,
             "minLength" : 0,
@@ -26172,7 +26177,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged)",
+        "summary" : "Correct recipient name / phone / Nova Poshta address, or switch Nova Poshta <-> pickup (null fields unchanged)",
         "tags" : [
           "Admin Orders"
         ]

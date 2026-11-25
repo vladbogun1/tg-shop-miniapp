@@ -85,11 +85,19 @@ class ShipmentOrderListenerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = EditKind.class, names = {"COMPOSITION", "GIFT", "DISCOUNT", "SILENT", "DETAILS"})
+    @EnumSource(value = EditKind.class, names = {"COMPOSITION", "GIFT", "DISCOUNT", "SILENT"})
     void anEditKeepsTheWaybillInStep(EditKind kind) {
         listener.onEdited(OrderEvents.Edited.of(ORDER, kind, false));
         verify(editing).syncWithOrder(ORDER);
         verifyNoInteractions(manual, cancellation);
+    }
+
+    @Test
+    void aDeliveryEditAlsoForgetsATypedWaybillOfAPickup() {
+        listener.onEdited(OrderEvents.Edited.of(ORDER, EditKind.DETAILS, false));
+        verify(manual).forgetForPickup(ORDER);
+        verify(editing).syncWithOrder(ORDER);
+        verifyNoInteractions(cancellation);
     }
 
     @Test

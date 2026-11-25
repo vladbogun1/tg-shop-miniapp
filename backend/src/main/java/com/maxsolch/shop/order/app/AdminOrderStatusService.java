@@ -4,6 +4,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -43,9 +44,6 @@ public class AdminOrderStatusService {
         OrderStatus target = parseStatus(req.status());
         boolean restock = req.restock() == null || req.restock();
         RejectReasonCode reasonCode = parseReasonCode(req.rejectReasonCode());
-        if (target == OrderStatus.SHIPPED && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
-            throw new DomainException.BadRequest(OrderError.TTN_REQUIRED);
-        }
         if (target == OrderStatus.REJECTED && reasonCode == null
                 && (req.rejectReason() == null || req.rejectReason().isBlank())) {
             throw new DomainException.BadRequest(OrderError.REJECT_REASON_REQUIRED);
@@ -54,6 +52,11 @@ public class AdminOrderStatusService {
             throw new DomainException.BadRequest(OrderError.REJECT_COMMENT_REQUIRED);
         }
         Order before = queries.load(id);
+        // A pickup is handed over in the shop: there is no parcel and no ТТН to type.
+        if (target == OrderStatus.SHIPPED && before.getDeliveryMethod() != DeliveryMethod.PICKUP
+                && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
+            throw new DomainException.BadRequest(OrderError.TTN_REQUIRED);
+        }
         // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
         boolean unpaidShip = target == OrderStatus.SHIPPED && OrderMoney.onlinePaymentMissing(before);
         long missingMinor = unpaidShip ? OrderMoney.amountDueMinor(before) : 0;

@@ -32,7 +32,9 @@ public final class OrderAdjustmentDtos {
             @Size(max = 32) String npFlat,
             @Size(max = 128) String recipientLastName,
             @Size(max = 128) String recipientFirstName,
-            @Size(max = 128) String recipientMiddleName) {
+            @Size(max = 128) String recipientMiddleName,
+            /** NOVA_POSHTA | PICKUP; given and different from the order's = the order switches to it. */
+            @Size(max = 16) String deliveryMethod) {
     }
 
     /** Merge {@code sourceId} into the order of the URL (V71). */

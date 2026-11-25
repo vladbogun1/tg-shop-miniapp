@@ -58,6 +58,20 @@ class ShipmentManualSync {
         }
     }
 
+    /**
+     * The order became a pickup: a typed-in waybill is no longer tracked (left as history), so «Внимание» does not
+     * show «ТТН не найдена» for a parcel that never existed. Ours is refused before the switch (ParcelGuard).
+     */
+    void forgetForPickup(byte[] orderId) {
+        ShippingOrder order = orders.find(orderId).orElse(null);
+        if (order == null || order.deliveryMethod() != DeliveryMethod.PICKUP) {
+            return;
+        }
+        tx.executeWithoutResult(t -> shipments.findByOrderIdInAndActiveTrue(List.of(orderId)).stream()
+                .filter(s -> OrderShipment.ORIGIN_MANUAL.equals(s.getOrigin()))
+                .forEach(s -> s.setActive(false)));
+    }
+
     /** The order's number without spaces; null when blank. */
     static String typed(ShippingOrder order) {
         String ttn = order.trackingNumber() == null ? null : order.trackingNumber().replaceAll("\\s+", "");

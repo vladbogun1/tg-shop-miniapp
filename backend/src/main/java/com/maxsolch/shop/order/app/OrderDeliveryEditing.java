@@ -80,12 +80,29 @@ public class OrderDeliveryEditing {
                                 String npFlat,
                                 String recipientLastName,
                                 String recipientFirstName,
-                                String recipientMiddleName) {
+                                String recipientMiddleName,
+                                /** NOVA_POSHTA | PICKUP; given and different = the order switches to it. */
+                                String deliveryMethod) {
 
         public DeliveryPatch(String customerName, String phone, String npCityRef, String npCityName,
                              String npWarehouseRef, String npWarehouseName) {
             this(customerName, phone, npCityRef, npCityName, npWarehouseRef, npWarehouseName,
                     null, null, null, null, null, null, null, null);
+        }
+
+        public DeliveryPatch(String customerName, String phone, String npCityRef, String npCityName,
+                             String npWarehouseRef, String npWarehouseName, String npServiceType,
+                             String npStreetRef, String npStreetName, String npBuilding, String npFlat,
+                             String recipientLastName, String recipientFirstName, String recipientMiddleName) {
+            this(customerName, phone, npCityRef, npCityName, npWarehouseRef, npWarehouseName, npServiceType,
+                    npStreetRef, npStreetName, npBuilding, npFlat, recipientLastName, recipientFirstName,
+                    recipientMiddleName, null);
+        }
+
+        /** Only the switch to a pickup: the order was handed over in the shop, not sent. */
+        public static DeliveryPatch pickup() {
+            return new DeliveryPatch(null, null, null, null, null, null, null, null, null, null, null, null, null,
+                    null, DeliveryMethod.PICKUP.name());
         }
 
         boolean recipientGiven() {
@@ -106,30 +123,64 @@ public class OrderDeliveryEditing {
     @Transactional
     public OrderChange updateDelivery(byte[] orderId, DeliveryPatch patch) {
         Order order = ops.lock(orderId);
-        OrderStatus s = order.getStatus();
-        if (!OrderTransitions.isDeliveryEditable(s)) {
-            throw new DomainException.BadRequest(OrderError.DELIVERY_EDIT_NOT_ALLOWED);
-        }
-        if (patch.touchesWaybill()) {
+        DeliveryMethod method = OrderAddressChanges.method(patch.deliveryMethod());
+        boolean toPickup = method == DeliveryMethod.PICKUP && order.getDeliveryMethod() != DeliveryMethod.PICKUP;
+        boolean toNovaPoshta = method == DeliveryMethod.NOVA_POSHTA
+                && order.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA;
+        requireEditable(order, toPickup, toNovaPoshta);
+        if (patch.touchesWaybill() || toPickup) {
             // The waybill at NP keeps the old recipient and branch; ours would silently disagree.
             parcels.requireNotHandedOver(order);
+        }
+        if (toPickup) {
+            // Our waybill is deleted at NP by «Скасувати ТТН» first; a typed-in number is just forgotten.
+            parcels.requireNoOwnWaybill(order);
         }
         List<String> changes = new ArrayList<>();
         changeName(order, patch, changes);
         changePhone(order, patch, changes);
-        OrderAddressChanges.recipient(order, patch, changes);
-        if (patch.npServiceType() != null) {
-            OrderAddressChanges.serviceAddress(order, patch, changes);
+        if (toPickup) {
+            OrderAddressChanges.toPickup(order, changes);
         } else {
-            changeBranch(order, patch, changes);
+            changeAddress(order, patch, toNovaPoshta, changes);
         }
         if (changes.isEmpty()) {
             return new OrderChange(order, "без изменений");
         }
         Order saved = orderRepository.save(order);
-        // Refreshes the seller's dispatch card ("К ОТПРАВКЕ") and the channel card.
+        // Refreshes the seller's dispatch card ("К ОТПРАВКЕ") and the channel card; a pickup forgets a typed-in ТТН.
         events.publish(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.DETAILS, false));
         return new OrderChange(saved, String.join("; ", changes));
+    }
+
+    /**
+     * Recipient and address edits go while the parcel can still be re-addressed (open or SHIPPED). The switch to a
+     * pickup also fits a delivered order: it was handed over in the shop and only marked as a Nova Poshta one. Back to
+     * Nova Poshta only before shipping — a pickup that already left has no parcel to send.
+     */
+    private static void requireEditable(Order order, boolean toPickup, boolean toNovaPoshta) {
+        OrderStatus s = order.getStatus();
+        boolean allowed = toPickup
+                ? s != OrderStatus.REJECTED
+                : OrderTransitions.isDeliveryEditable(s) && (!toNovaPoshta || OrderTransitions.isOpen(s));
+        if (!allowed) {
+            throw new DomainException.BadRequest(toNovaPoshta && s != OrderStatus.REJECTED
+                    ? OrderError.NP_SWITCH_AFTER_SHIPPING : OrderError.DELIVERY_EDIT_NOT_ALLOWED);
+        }
+    }
+
+    /** Recipient parts and the Nova Poshta address; a pickup order becomes a Nova Poshta one only with a full address. */
+    private static void changeAddress(Order order, DeliveryPatch patch, boolean toNovaPoshta, List<String> changes) {
+        if (toNovaPoshta && patch.npServiceType() == null) {
+            throw new DomainException.BadRequest(OrderError.NP_SERVICE_TYPE_UNKNOWN);
+        }
+        if (patch.npServiceType() != null) {
+            OrderAddressChanges.serviceAddress(order, patch, toNovaPoshta, changes);
+        } else {
+            changeBranch(order, patch, changes);
+        }
+        // After the address: a new Nova Poshta recipient is checked for Cyrillic against the method it now has.
+        OrderAddressChanges.recipient(order, patch, changes);
     }
 
     private static void changeName(Order order, DeliveryPatch patch, List<String> changes) {

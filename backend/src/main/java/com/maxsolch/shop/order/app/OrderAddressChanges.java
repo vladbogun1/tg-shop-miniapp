@@ -47,9 +47,41 @@ final class OrderAddressChanges {
         }
     }
 
-    /** A new address for the given service type: branch / parcel locker, or the courier address. */
-    static void serviceAddress(Order order, OrderDeliveryEditing.DeliveryPatch patch, List<String> changes) {
-        if (order.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA) {
+    /** The method a patch asks for; null = not given (the order keeps its own). */
+    static DeliveryMethod method(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return DeliveryMethod.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new DomainException.BadRequest(OrderError.DELIVERY_METHOD_UNKNOWN);
+        }
+    }
+
+    /**
+     * The order was (or will be) handed over in the shop: no Nova Poshta address and no ТТН — a typed-in number left
+     * on it would be tracked at NP and shown as «ТТН не найдена». The recipient's name parts stay.
+     */
+    static void toPickup(Order order, List<String> changes) {
+        String before = describe(order);
+        order.deliverTo(new DeliveryTarget(DeliveryMethod.PICKUP, null, null, null, null));
+        changes.add("доставка: " + before + " → самовывоз");
+        String ttn = order.getTrackingNumber();
+        if (!isBlank(ttn)) {
+            order.changeTrackingNumber(null);
+            changes.add("ТТН " + ttn + " убрана");
+        }
+    }
+
+    /**
+     * A new address for the given service type: branch / parcel locker, or the courier address.
+     *
+     * @param switching the order is a pickup and becomes a Nova Poshta one with this address
+     */
+    static void serviceAddress(Order order, OrderDeliveryEditing.DeliveryPatch patch, boolean switching,
+                               List<String> changes) {
+        if (order.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA && !switching) {
             throw new DomainException.BadRequest(OrderError.PICKUP_NO_NP_ADDRESS);
         }
         NpServiceType type;
@@ -95,6 +127,9 @@ final class OrderAddressChanges {
     }
 
     private static String describe(Order o) {
+        if (o.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA) {
+            return "самовывоз";
+        }
         NpServiceType t = o.npService();
         String where = t == NpServiceType.DOORS
                 ? "курьер, " + nz(o.getNpStreetName()) + " " + nz(o.getNpBuilding())

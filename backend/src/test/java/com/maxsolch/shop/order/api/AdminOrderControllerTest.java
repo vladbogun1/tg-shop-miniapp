@@ -137,7 +137,19 @@ class AdminOrderControllerTest {
     void status_shippedWithoutTracking_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("SHIPPED", "  ", null, null, null, null, null)))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("укажите номер ТТН");
-        verifyNoInteractions(orders, checkout, lifecycle, audit);
+        verifyNoInteractions(checkout, lifecycle, audit);
+    }
+
+    @Test
+    void status_pickupShippedWithoutTracking_isAllowed() {
+        OrderFixtures.set(order, "deliveryMethod", com.maxsolch.shop.order.domain.DeliveryMethod.PICKUP);
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
+                anyBoolean(), anyBoolean())).thenReturn(order);
+
+        controller().updateStatus(id, status("SHIPPED", null, null, null, null, null, null));
+
+        verify(lifecycle).changeStatus(order.getId(), OrderStatus.SHIPPED, null, null, null, true, false);
+        verify(audit).record("ORDER_STATUS", "ORDER", id, "статус → SHIPPED");
     }
 
     @Test

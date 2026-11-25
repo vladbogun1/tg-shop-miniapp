@@ -161,14 +161,16 @@ public class AdminOrderController {
     }
 
     @PatchMapping("/{id}/delivery")
-    @Operation(summary = "Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged)")
+    @Operation(summary = "Correct recipient name / phone / Nova Poshta address, or switch Nova Poshta <-> pickup "
+            + "(null fields unchanged)")
     public OrderDetailDto updateDelivery(@PathVariable String id,
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateDeliveryRequest req) {
         return orderQueryService.toDetail(orders.updateDelivery(id,
                 new OrderDeliveryEditing.DeliveryPatch(req.customerName(), req.phone(),
                         req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
                         req.npServiceType(), req.npStreetRef(), req.npStreetName(), req.npBuilding(), req.npFlat(),
-                        req.recipientLastName(), req.recipientFirstName(), req.recipientMiddleName())));
+                        req.recipientLastName(), req.recipientFirstName(), req.recipientMiddleName(),
+                        req.deliveryMethod())));
     }
 
     @GetMapping("/{id}/merge-candidates")
