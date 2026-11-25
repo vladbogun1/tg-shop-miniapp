@@ -10,6 +10,7 @@ import { CopyButton } from "@/components/ui/CopyButton";
 import type { AdminOrderDetail } from "../../api";
 import { serviceLabel } from "@/features/delivery";
 import { deliveryAddress, npRecipientIfDifferent } from "../../model/address";
+import { onlyPickupSwitch } from "../../model/delivery-edit";
 import { DELIVERY_LABEL } from "../../model/status";
 import { Row, Section, SectionAction } from "./section";
 import type { DetailHandlers } from "./types";
@@ -99,7 +100,9 @@ function DeliveryRows({ order }: { order: AdminOrderDetail }) {
 }
 
 export function RecipientSection({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
-  const deliveryEditable = order.status === "NEW" || order.status === "APPROVED" || order.status === "SHIPPED";
+  // A delivered Nova Poshta order still opens the window: «на самом деле забрал сам» (only the switch to a pickup).
+  const deliveryEditable =
+    order.status === "NEW" || order.status === "APPROVED" || order.status === "SHIPPED" || onlyPickupSwitch(order);
 
   return (
     <Section

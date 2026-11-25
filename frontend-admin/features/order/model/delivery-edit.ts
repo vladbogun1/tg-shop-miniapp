@@ -17,6 +17,13 @@ export interface StreetPick {
 
 export type NpService = "WAREHOUSE" | "POSTOMAT" | "DOORS";
 
+export type DeliveryMethod = "NOVA_POSHTA" | "PICKUP";
+
+export const DELIVERY_METHODS: { value: DeliveryMethod; label: string }[] = [
+  { value: "NOVA_POSHTA", label: "Нова Пошта" },
+  { value: "PICKUP", label: "Самовывоз" },
+];
+
 export const NP_SERVICES: { value: NpService; label: string }[] = [
   { value: "WAREHOUSE", label: "Відділення" },
   { value: "POSTOMAT", label: "Поштомат" },
@@ -39,10 +46,12 @@ type DeliveryOrder = Pick<
   | "recipientLastName"
   | "recipientFirstName"
   | "recipientMiddleName"
+  | "status"
 >;
 
 /** Всё, что правится в окне. */
 export interface DeliveryDraft {
+  method: DeliveryMethod;
   name: string;
   phone: string;
   city: Place | null;
@@ -65,8 +74,23 @@ export function serviceOf(order: Pick<DeliveryOrder, "npServiceType">): NpServic
   return v === "POSTOMAT" || v === "DOORS" ? v : "WAREHOUSE";
 }
 
+export function methodOf(order: Pick<DeliveryOrder, "deliveryMethod">): DeliveryMethod {
+  return order.deliveryMethod === "PICKUP" ? "PICKUP" : "NOVA_POSHTA";
+}
+
+/** Доставленный заказ правится только в одну сторону: «на самом деле забрал сам». */
+export function onlyPickupSwitch(order: Pick<DeliveryOrder, "status" | "deliveryMethod">): boolean {
+  return order.status === "DELIVERED" && order.deliveryMethod === "NOVA_POSHTA";
+}
+
+/** На Новую почту — только пока заказ не отправлен (сервер проверяет то же). */
+export function canSwitchToNp(order: Pick<DeliveryOrder, "status">): boolean {
+  return order.status === "NEW" || order.status === "APPROVED";
+}
+
 export function draftOf(order: DeliveryOrder): DeliveryDraft {
   return {
+    method: methodOf(order),
     name: order.customerName ?? "",
     phone: order.phone ?? "",
     city: placeOf(order.npCityRef, order.npCityName),
@@ -113,12 +137,21 @@ function addressPatch(d: DeliveryDraft & { city: Place }): DeliveryPatch {
   return { ...patch, npBuilding: d.building.trim(), npFlat: d.flat.trim() };
 }
 
+/** С самовывоза на НП: получатель целиком и адрес — без них ТТН не создать. */
+function toNpPatch(d: DeliveryDraft): DeliveryPatch {
+  const recipient = { recipientLastName: d.last.trim(), recipientFirstName: d.first.trim(), recipientMiddleName: d.middle.trim() };
+  const address = d.city ? addressPatch({ ...d, city: d.city }) : {};
+  return { ...recipient, ...address, deliveryMethod: "NOVA_POSHTA" };
+}
+
 /** Только изменённые поля. */
 export function buildDeliveryPatch(order: DeliveryOrder, d: DeliveryDraft): DeliveryPatch {
   let patch: DeliveryPatch = {};
   if (!same(d.name, order.customerName)) patch.customerName = d.name.trim();
   if (!same(d.phone, order.phone)) patch.phone = d.phone.trim();
-  if (order.deliveryMethod !== "NOVA_POSHTA") return patch;
+  const from = methodOf(order);
+  if (d.method === "PICKUP") return from === "PICKUP" ? patch : { ...patch, deliveryMethod: "PICKUP" };
+  if (from === "PICKUP") return { ...patch, ...toNpPatch(d) };
   if (recipientChanged(order, d)) {
     patch = { ...patch, recipientLastName: d.last.trim(), recipientFirstName: d.first.trim(), recipientMiddleName: d.middle.trim() };
   }
@@ -138,8 +171,12 @@ function addressInvalid(order: DeliveryOrder, d: DeliveryDraft): boolean {
 }
 
 export function isDeliveryInvalid(order: DeliveryOrder, d: DeliveryDraft): boolean {
+  // Окно доставленного заказа прячет имя и телефон — их пустота не держит переключение на самовывоз.
+  if (d.method === "PICKUP" && onlyPickupSwitch(order)) return false;
   if (!d.name.trim() || phoneDigits(d.phone) < MIN_PHONE_DIGITS) return true;
-  return order.deliveryMethod === "NOVA_POSHTA" && addressInvalid(order, d);
+  if (d.method === "PICKUP") return false;
+  if (methodOf(order) === "PICKUP") return addressInvalid(order, d) || !d.last.trim() || !d.first.trim();
+  return addressInvalid(order, d);
 }
 
 /** Текстовые поля окна (react-hook-form); город, отделение, тип и улица — выбор из справочника. */

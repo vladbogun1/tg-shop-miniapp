@@ -23,19 +23,33 @@ export interface NpAddressState {
 }
 
 
-function ServiceChips({ value, onChange }: { value: NpService; onChange: (v: NpService) => void }) {
+/** Выбор одного из нескольких вариантов кнопками-«чипсами» (тип доставки НП, способ доставки). */
+export function ChoiceChips<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  disabled?: (v: T) => boolean;
+}) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="field-label">Тип доставки</span>
+      <span className="field-label">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {NP_SERVICES.map((x) => (
+        {options.map((x) => (
           <button
             key={x.value}
             type="button"
             aria-pressed={value === x.value}
+            disabled={disabled?.(x.value)}
             onClick={() => onChange(x.value)}
             className={cn(
-              "focusable nb-press min-h-8 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors pointer-coarse:min-h-10",
+              "focusable nb-press min-h-8 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors disabled:opacity-40 pointer-coarse:min-h-10",
               value === x.value
                 ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                 : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]",
@@ -117,7 +131,12 @@ export function NpAddressFields({
   );
   return (
     <>
-      <ServiceChips value={service} onChange={(v) => v !== service && onChange({ service: v, wh: null })} />
+      <ChoiceChips
+        label="Тип доставки"
+        options={NP_SERVICES}
+        value={service}
+        onChange={(v: NpService) => v !== service && onChange({ service: v, wh: null })}
+      />
       <Autocomplete<NpCity>
         label="Город"
         placeholder="Начните вводить город…"

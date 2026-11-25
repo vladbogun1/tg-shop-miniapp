@@ -6,6 +6,9 @@
  * City, branch / postomat and street are picked from the Nova Poshta directory, so the refs stay valid;
  * a street NP does not know can be typed by hand. The recipient for the waybill goes in parts
  * (surname / name / patronymic) — NP wants them separately.
+ *
+ * The method switches too: Nova Poshta → pickup drops the address and the ТТН (also for a delivered order that was
+ * really picked up in the shop — then only that switch is offered); pickup → Nova Poshta only before shipping.
  */
 import { useLayoutEffect, useState } from "react";
 import { useForm, type ShopForm } from "@shop/ui/form";
@@ -15,16 +18,20 @@ import { Input } from "@/components/ui/Input";
 import { useLatestRef } from "../use-latest-ref";
 import type { AdminOrderDetail, DeliveryPatch } from "../../api";
 import {
+  DELIVERY_METHODS,
   MIN_PHONE_DIGITS,
   buildDeliveryPatch,
+  canSwitchToNp,
   draftOf,
   isDeliveryInvalid,
   phoneDigits,
+  onlyPickupSwitch,
   recipientMissing,
   type DeliveryDraft,
+  type DeliveryMethod,
   type DeliveryText,
 } from "../../model/delivery-edit";
-import { NpAddressFields, type NpAddressState } from "./NpAddressFields";
+import { ChoiceChips, NpAddressFields, type NpAddressState } from "./NpAddressFields";
 
 const EMPTY_TEXT: DeliveryText = { name: "", phone: "", building: "", flat: "", last: "", first: "", middle: "" };
 const EMPTY_ADDRESS: NpAddressState = { city: null, wh: null, service: "WAREHOUSE", street: null };
@@ -46,6 +53,18 @@ function RecipientNameFields({ register, missing }: { register: ShopForm<Deliver
   );
 }
 
+function MethodNote({ order, method }: { order: AdminOrderDetail; method: DeliveryMethod }) {
+  const toPickup = method === "PICKUP" && order.deliveryMethod === "NOVA_POSHTA";
+  return (
+    <p className="text-[12px] text-[var(--text-faint)]">
+      {toPickup && "Адрес Новой почты и ТТН уберутся из заказа — ТТН для самовывоза не нужна. "}
+      {order.deliveryMethod === "PICKUP" && method === "NOVA_POSHTA" && "Укажите получателя и адрес — по ним создастся ТТН. "}
+      Изменения попадут в журнал, карточки в Telegram обновятся. Клиенту ничего не отправляется.
+      {order.status === "SHIPPED" && !toPickup && " Заказ уже отправлен — переадресуйте посылку в кабинете Новой Почты."}
+    </p>
+  );
+}
+
 export function DeliveryEditModal({
   open,
   order,
@@ -63,6 +82,7 @@ export function DeliveryEditModal({
   const { reset } = form;
   const text = form.watch();
   const [address, setAddress] = useState<NpAddressState>(EMPTY_ADDRESS);
+  const [method, setMethod] = useState<DeliveryMethod>("NOVA_POSHTA");
 
   const orderId = order?.id ?? null;
   // Only on (re)open — not when the same order refetches while the form is being edited.
@@ -73,11 +93,13 @@ export function DeliveryEditModal({
     const d = draftOf(current);
     reset(textOf(d));
     setAddress({ city: d.city, wh: d.wh, service: d.service, street: d.street });
+    setMethod(d.method);
   }, [open, orderId, reset, orderRef]);
 
   if (!order) return null;
-  const isNp = order.deliveryMethod === "NOVA_POSHTA";
-  const draft: DeliveryDraft = { ...text, ...address };
+  const isNp = method === "NOVA_POSHTA";
+  const pickupOnly = onlyPickupSwitch(order);
+  const draft: DeliveryDraft = { ...text, ...address, method };
   const patch = buildDeliveryPatch(order, draft);
   const changed = Object.keys(patch).length > 0;
   const invalid = isDeliveryInvalid(order, draft);
@@ -99,23 +121,31 @@ export function DeliveryEditModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input label="ФИО получателя" {...form.register("name")} autoComplete="off" />
-        <Input
-          label="Телефон"
-          inputMode="tel"
-          {...form.register("phone")}
-          error={text.phone && phoneDigits(text.phone) < MIN_PHONE_DIGITS ? "Минимум 10 цифр" : undefined}
+        <ChoiceChips
+          label="Способ доставки"
+          options={DELIVERY_METHODS}
+          value={method}
+          onChange={setMethod}
+          disabled={(v) => v !== order.deliveryMethod && v === "NOVA_POSHTA" && !canSwitchToNp(order)}
         />
-        {isNp && (
+        {!pickupOnly && (
+          <>
+            <Input label="ФИО получателя" {...form.register("name")} autoComplete="off" />
+            <Input
+              label="Телефон"
+              inputMode="tel"
+              {...form.register("phone")}
+              error={text.phone && phoneDigits(text.phone) < MIN_PHONE_DIGITS ? "Минимум 10 цифр" : undefined}
+            />
+          </>
+        )}
+        {isNp && !pickupOnly && (
           <>
             <RecipientNameFields register={form.register} missing={recipientMissing(order, draft)} />
             <NpAddressFields value={address} onChange={(p) => setAddress((a) => ({ ...a, ...p }))} houseInput={form.register} />
           </>
         )}
-        <p className="text-[12px] text-[var(--text-faint)]">
-          Изменения попадут в журнал, карточки в Telegram обновятся. Клиенту ничего не отправляется.
-          {order.status === "SHIPPED" && " Заказ уже отправлен — переадресуйте посылку в кабинете Новой Почты."}
-        </p>
+        <MethodNote order={order} method={method} />
       </div>
     </Modal>
   );

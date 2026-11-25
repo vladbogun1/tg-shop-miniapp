@@ -87,6 +87,8 @@ export interface DeliveryPatch {
   recipientLastName?: string;
   recipientFirstName?: string;
   recipientMiddleName?: string;
+  /** Смена способа: PICKUP — адрес и ТТН снимаются; NOVA_POSHTA — вместе с адресом (только до отправки). */
+  deliveryMethod?: "NOVA_POSHTA" | "PICKUP";
 }
 
 /** Размер страницы чата заказа (по умолчанию бэкенда). */

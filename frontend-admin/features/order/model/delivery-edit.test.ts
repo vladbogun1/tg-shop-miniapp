@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDeliveryPatch, draftOf, isDeliveryInvalid, phoneDigits, placeOf, recipientMissing, serviceOf } from "./delivery-edit";
+import { canSwitchToNp, onlyPickupSwitch, buildDeliveryPatch, draftOf, isDeliveryInvalid, phoneDigits, placeOf, recipientMissing, serviceOf } from "./delivery-edit";
 
 const order = {
   customerName: "Иван",
@@ -91,5 +91,41 @@ describe("phoneDigits / placeOf / serviceOf", () => {
   it("тип доставки: неизвестный — отделение", () => {
     expect(serviceOf({ npServiceType: "DOORS" })).toBe("DOORS");
     expect(serviceOf({ npServiceType: null })).toBe("WAREHOUSE");
+  });
+});
+
+describe("смена способа доставки", () => {
+  it("НП → самовывоз: только флаг, без адреса", () => {
+    expect(buildDeliveryPatch(order, { ...draft, method: "PICKUP" })).toEqual({ deliveryMethod: "PICKUP" });
+    expect(isDeliveryInvalid(order, { ...draft, method: "PICKUP", city: null })).toBe(false);
+  });
+  it("доставленный заказ НП: пустой телефон не держит переключение на самовывоз", () => {
+    const delivered = { ...order, status: "DELIVERED" } as typeof order;
+    expect(isDeliveryInvalid(delivered, { ...draft, phone: "", method: "PICKUP" })).toBe(false);
+    expect(isDeliveryInvalid(order, { ...draft, phone: "", method: "PICKUP" })).toBe(true);
+  });
+  it("самовывоз → НП: получатель и адрес целиком; без адреса нельзя", () => {
+    const pickup = { ...order, deliveryMethod: "PICKUP", npCityRef: null, npCityName: null, npWarehouseRef: null, npWarehouseName: null } as typeof order;
+    const d = { ...draftOf(pickup), method: "NOVA_POSHTA" as const };
+    expect(isDeliveryInvalid(pickup, d)).toBe(true);
+    const full = { ...d, city: { ref: "c2", name: "Київ" }, wh: { ref: "w7", name: "Відділення 7" } };
+    expect(isDeliveryInvalid(pickup, full)).toBe(false);
+    expect(buildDeliveryPatch(pickup, full)).toEqual({
+      deliveryMethod: "NOVA_POSHTA",
+      npServiceType: "WAREHOUSE",
+      npCityRef: "c2",
+      npCityName: "Київ",
+      npWarehouseRef: "w7",
+      npWarehouseName: "Відділення 7",
+      recipientLastName: "Иванов",
+      recipientFirstName: "Иван",
+      recipientMiddleName: "",
+    });
+  });
+  it("доставленный заказ НП — только переключение на самовывоз; на НП — только до отправки", () => {
+    expect(onlyPickupSwitch({ status: "DELIVERED", deliveryMethod: "NOVA_POSHTA" })).toBe(true);
+    expect(onlyPickupSwitch({ status: "DELIVERED", deliveryMethod: "PICKUP" })).toBe(false);
+    expect(canSwitchToNp({ status: "APPROVED" })).toBe(true);
+    expect(canSwitchToNp({ status: "SHIPPED" })).toBe(false);
   });
 });

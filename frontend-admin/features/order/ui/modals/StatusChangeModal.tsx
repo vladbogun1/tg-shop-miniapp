@@ -2,7 +2,7 @@
 
 /**
  * StatusChangeModal — asks for what a transition needs before it is applied:
- *  - SHIPPED   → tracking number (ТТН, required; Nova Poshta format is checked as a hint)
+ *  - SHIPPED   → tracking number (ТТН, required for Nova Poshta; format checked as a hint) — a pickup needs none
  *  - REJECTED  → reason from the fixed list (+ optional text; required for "Другое") and restock;
  *                of a SHIPPED order also «посылка едет назад» (stock returns with «Посылка вернулась»)
  *  - DELIVERED → an explicit confirmation: it also marks the order fully paid and notifies the customer
@@ -13,7 +13,7 @@
  */
 import { useLayoutEffect, useState } from "react";
 import type { OrderStatus } from "@shop/core/types";
-import { BACK_REASONS, buildStatusPayload, cleanTtn, isStatusInvalid, ttnLooksWrong } from "../../model/status-change";
+import { BACK_REASONS, buildStatusPayload, cleanTtn, isStatusInvalid, ttnLooksWrong, ttnNeeded } from "../../model/status-change";
 import type { RejectReasonCode } from "../../model/status";
 import type { StatusChangeBody } from "../../api";
 import { useForm } from "@shop/ui/form";
@@ -53,6 +53,7 @@ function StatusBody(props: {
   target: OrderStatus;
   order: StatusTargetOrder | null;
   form: StatusForm;
+  needsTtn: boolean;
   ttnWrong: boolean;
   shippedReject: boolean;
   state: RejectState;
@@ -65,7 +66,10 @@ function StatusBody(props: {
   return (
     <>
       {!order && <NoOrderNote />}
-      {target === "SHIPPED" && <TtnField form={form} looksWrong={props.ttnWrong} onEnter={props.onEnter} />}
+      {target === "SHIPPED" && props.needsTtn && <TtnField form={form} looksWrong={props.ttnWrong} onEnter={props.onEnter} />}
+      {target === "SHIPPED" && !props.needsTtn && (
+        <p className="text-[14px] text-[var(--text-muted)]">Самовывоз — ТТН не нужна. Перевести заказ в «Отправлен»?</p>
+      )}
       {target === "REJECTED" && (
         <ReasonFields
           form={form}
@@ -102,7 +106,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
   }, [open, target, orderId, initialInTransit, initialCode, reset]);
 
   if (!target) return null;
-  const needsTtn = target === "SHIPPED";
+  const needsTtn = ttnNeeded(target, order?.deliveryMethod);
   const needsReason = target === "REJECTED";
   const shippedReject = needsReason && order?.fromStatus === "SHIPPED";
 
@@ -138,6 +142,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
         target={target}
         order={order}
         form={form}
+        needsTtn={needsTtn}
         ttnWrong={ttnLooksWrong(needsTtn, ttnClean)}
         shippedReject={shippedReject}
         state={{ code, restock, inTransit }}

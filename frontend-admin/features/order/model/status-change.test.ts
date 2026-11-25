@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStatusPayload, cleanTtn, heldMoneyKind, isStatusInvalid, REASONS, ttnLooksWrong } from "./status-change";
+import { buildStatusPayload, cleanTtn, heldMoneyKind, isStatusInvalid, REASONS, ttnLooksWrong, ttnNeeded } from "./status-change";
 
 const base = { hasOrder: true, needsTtn: false, ttnClean: "", needsReason: false, code: null, reason: "" } as const;
 
@@ -71,5 +71,18 @@ describe("heldMoneyKind", () => {
     expect(heldMoneyKind(150, 100)).toBe("over");
     expect(heldMoneyKind(50, 0)).toBe("over");
     expect(heldMoneyKind(50, undefined)).toBe("unknown");
+  });
+});
+
+describe("самовывоз без ТТН", () => {
+  it("ТТН нужна только посылке Новой почты", () => {
+    expect(ttnNeeded("SHIPPED", "NOVA_POSHTA")).toBe(true);
+    expect(ttnNeeded("SHIPPED", "PICKUP")).toBe(false);
+    expect(ttnNeeded("DELIVERED", "NOVA_POSHTA")).toBe(false);
+  });
+  it("«Отправлен» без номера — без trackingNumber в теле", () => {
+    expect(
+      buildStatusPayload({ target: "SHIPPED", ttnClean: "", code: null, reason: "", restock: true, inTransit: false, shippedReject: false }),
+    ).toEqual({ status: "SHIPPED" });
   });
 });

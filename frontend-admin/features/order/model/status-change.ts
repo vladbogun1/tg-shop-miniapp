@@ -14,6 +14,11 @@ export function cleanTtn(raw: string): string {
   return raw.replace(/\s+/g, "");
 }
 
+/** «Отправлен» требует ТТН у посылки Новой почты; самовывоз выдают в магазине — номера нет. */
+export function ttnNeeded(target: OrderStatus, deliveryMethod: string | null | undefined): boolean {
+  return target === "SHIPPED" && deliveryMethod !== "PICKUP";
+}
+
 export function ttnLooksWrong(needsTtn: boolean, ttnClean: string): boolean {
   return needsTtn && ttnClean.length > 0 && !isNovaPoshtaTtn(ttnClean);
 }
@@ -42,11 +47,10 @@ export function buildStatusPayload(a: {
   inTransit: boolean;
   shippedReject: boolean;
 }): StatusChangeBody {
-  const needsTtn = a.target === "SHIPPED";
   const needsReason = a.target === "REJECTED";
   return {
     status: a.target,
-    trackingNumber: needsTtn ? a.ttnClean : undefined,
+    trackingNumber: a.target === "SHIPPED" && a.ttnClean ? a.ttnClean : undefined,
     rejectReasonCode: needsReason && a.code ? a.code : undefined,
     rejectReason: needsReason && a.reason.trim() ? a.reason.trim() : undefined,
     restock: needsReason && !(a.shippedReject && a.inTransit) ? a.restock : undefined,
