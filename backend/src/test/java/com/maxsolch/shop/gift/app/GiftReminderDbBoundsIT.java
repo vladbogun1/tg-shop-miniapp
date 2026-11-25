@@ -66,8 +66,10 @@ class GiftReminderDbBoundsIT extends AbstractMysqlIT {
         String blockedCode = code(blockedOrder, 0, true);
         String used = code(usedOrder, 1, true);
 
-        job.run();
-        job.run();
+        // sendDue, not run(): run() goes through @SchedulerLock (5 s at least), and a scheduled tick of a cached test
+        // context may hold it right now, so run() would be skipped silently. Twice = "once" is the DB claim.
+        job.sendDue();
+        job.sendDue();
 
         verify(customerNotifier).notifyCustomerCasePromoExpiring(any(), eq(due), anyInt(), anyLong(), any());
         verify(customerNotifier, never()).notifyCustomerCasePromoExpiring(any(), eq(blockedCode), anyInt(), anyLong(), any());
