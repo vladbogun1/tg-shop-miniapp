@@ -36,6 +36,41 @@ class ShipmentOverridesTest {
         assertThat(p.packMinor()).isZero();
     }
 
+    private static Options boxWithPrice(Integer weightG, Integer l, Integer w, Integer h, Long packMinor) {
+        return new Options(null, weightG, l, w, h, null, null, null, null, null, null, null, false, null, null, packMinor);
+    }
+
+    @Test
+    void theChosenBoxKeepsItsPriceInTheEstimate() {
+        // Коробка 2 кг (15 ₴) chosen instead of the suggested 10 kg box (80 ₴): the branch charges 15, not 0 and not 80.
+        Parcel p = ShipmentPreparation.withOverrides(TWO, boxWithPrice(1_800, 340, 240, 90, 1_500L));
+        assertThat(p.seats()).hasSize(1);
+        assertThat(p.packMinor()).isEqualTo(1_500);
+    }
+
+    @Test
+    void aFreeBoxChosenInsteadOfAPaidOneCostsNothing() {
+        Parcel p = ShipmentPreparation.withOverrides(TWO, boxWithPrice(9_000, null, null, null, 0L));
+        assertThat(p.packMinor()).isZero();
+    }
+
+    @Test
+    void sameSidesButAnotherBoxTakeTheChosenBoxPrice() {
+        // The dialog sends back the suggested sides; the packer picked a box of the same size with another price.
+        Parcel p = ShipmentPreparation.withOverrides(TWO, boxWithPrice(12_600, 400, 340, 280, 4_000L));
+        assertThat(p.seats()).isEqualTo(TWO.seats());
+        assertThat(p.packMinor()).isEqualTo(4_000);
+    }
+
+    @Test
+    void thePackersSeatsTakeThePriceOfTheirBoxesNotOfTheSuggestedOnes() {
+        List<Parcel.Seat> seats = List.of(new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),
+                new Parcel.Seat(700, 490, 420, 10, "Стрейч 49×42 см"));
+        Options o = new Options(null, 1550, 400, 240, 80, null, null, null, null, null, null, null, true, null, seats,
+                4_000L);
+        assertThat(ShipmentPreparation.withOverrides(TWO, o).packMinor()).isEqualTo(4_000);
+    }
+
     @Test
     void thePackersSeatsAreSentAsTheyAre() {
         List<Parcel.Seat> seats = List.of(new Parcel.Seat(850, 400, 240, 80, "Коробка 5 кг · 8 см"),

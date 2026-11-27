@@ -273,19 +273,22 @@ class ShipmentPreparation {
      * admin's own — they make one seat of that box. Equal values keep the computed seats.
      */
     static Parcel withOverrides(Parcel auto, Options o) {
+        // The branch charges for the box the packer chose, not for the suggested one.
+        long pack = o.packMinor() != null ? Math.max(0, o.packMinor()) : auto.packMinor();
         if (o.ownSeats()) {
             // Packed as several seats (a mat in stretch film + a mouse in a box): exactly those, never «Документи».
-            return Parcel.of(o.seats(), PACKED + o.seats().size() + " места", auto.packMinor());
+            return Parcel.of(o.seats(), PACKED + o.seats().size() + " места", pack);
         }
         boolean weightSame = o.weightG() == null || o.weightG() <= 0 || o.weightG() == auto.weightG();
         boolean boxSame = sameOrUnset(o.lengthMm(), auto.lengthMm()) && sameOrUnset(o.widthMm(), auto.widthMm())
                 && sameOrUnset(o.heightMm(), auto.heightMm());
         if (weightSame && boxSame) {
-            return auto;
+            return pack == auto.packMinor() ? auto : new Parcel(auto.weightG(), auto.lengthMm(), auto.widthMm(),
+                    auto.heightMm(), auto.source(), auto.seats(), pack, auto.documents());
         }
         Parcel own = new Parcel(positiveOr(o.weightG(), auto.weightG()), positiveOr(o.lengthMm(), auto.lengthMm()),
                 positiveOr(o.widthMm(), auto.widthMm()), positiveOr(o.heightMm(), auto.heightMm()),
-                "указано вручную");
+                "указано вручную", null, o.packMinor() != null ? pack : 0);
         // Flat goods typed lighter still go as «Документи»; heavier — a parcel.
         return own.withDocuments(auto.documents() && own.weightG() <= 1000);
     }

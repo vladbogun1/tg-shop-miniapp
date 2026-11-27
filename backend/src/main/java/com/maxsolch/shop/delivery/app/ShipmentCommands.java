@@ -22,18 +22,30 @@ public final class ShipmentCommands {
      * @param documents   null = «Документи» when the goods qualify; false = always a parcel; true = documents
      * @param seats       two or more seats the packer made (each its sides and weight); null = one seat of the
      *                    weight and sides above, or the computed parcel
+     * @param packMinor   what the branch charges for the box the packer chose (the sum over seats); null = the
+     *                    computed parcel's, which is the suggested box's
      */
     public record Options(String senderWarehouseRef, Integer weightG, Integer lengthMm, Integer widthMm,
                           Integer heightMm, Long declaredMinor, Boolean collectCod, String description,
                           LocalDate date, String recipientLastName, String recipientFirstName,
-                          String recipientMiddleName, boolean allowUnpaid, Boolean documents, List<Parcel.Seat> seats) {
+                          String recipientMiddleName, boolean allowUnpaid, Boolean documents, List<Parcel.Seat> seats,
+                          Long packMinor) {
+
+        /** Without the chosen box's price: the computed parcel's stays. */
+        public Options(String senderWarehouseRef, Integer weightG, Integer lengthMm, Integer widthMm,
+                       Integer heightMm, Long declaredMinor, Boolean collectCod, String description,
+                       LocalDate date, String recipientLastName, String recipientFirstName,
+                       String recipientMiddleName, boolean allowUnpaid, Boolean documents, List<Parcel.Seat> seats) {
+            this(senderWarehouseRef, weightG, lengthMm, widthMm, heightMm, declaredMinor, collectCod, description, date,
+                    recipientLastName, recipientFirstName, recipientMiddleName, allowUnpaid, documents, seats, null);
+        }
 
         public Options(String senderWarehouseRef, Integer weightG, Integer lengthMm, Integer widthMm,
                        Integer heightMm, Long declaredMinor, Boolean collectCod, String description,
                        LocalDate date, String recipientLastName, String recipientFirstName,
                        String recipientMiddleName, boolean allowUnpaid, Boolean documents) {
             this(senderWarehouseRef, weightG, lengthMm, widthMm, heightMm, declaredMinor, collectCod, description, date,
-                    recipientLastName, recipientFirstName, recipientMiddleName, allowUnpaid, documents, null);
+                    recipientLastName, recipientFirstName, recipientMiddleName, allowUnpaid, documents, null, null);
         }
 
         /** The packer's own seats: two or more. */
@@ -55,7 +67,7 @@ public final class ShipmentCommands {
         Options allowingUnpaid() {
             return new Options(senderWarehouseRef, weightG, lengthMm, widthMm, heightMm, declaredMinor, collectCod,
                     description, date, recipientLastName, recipientFirstName, recipientMiddleName, true, documents,
-                    seats);
+                    seats, packMinor);
         }
     }
 

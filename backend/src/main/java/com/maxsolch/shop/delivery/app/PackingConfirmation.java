@@ -98,7 +98,7 @@ public class PackingConfirmation {
      * seats: the first seat's sides, the whole weight, every seat and their label.
      */
     private record Measured(int lengthMm, int widthMm, int heightMm, int weightG, int[] folded, List<Parcel.Seat> seats,
-                            String label, List<NpBoxCatalog.OwnBox> own) {
+                            String label, List<NpBoxCatalog.OwnBox> own, long packMinor) {
     }
 
     private Measured measure(ShippingOrder order, String service, Choice c, Integer weightG) {
@@ -111,7 +111,7 @@ public class PackingConfirmation {
         int[] cell = c.bag() ? postomats.cell(service, order) : null;
         int[] folded = cell == null ? null : BoxOptions.foldBag(sides[0], sides[1], height, units, cell);
         return new Measured(folded == null ? sides[0] : folded[0], folded == null ? sides[1] : folded[1],
-                height, weight, folded, null, null, List.of());
+                height, weight, folded, null, null, List.of(), c.box() == null ? 0 : c.box().getPackMinor());
     }
 
     /** Several seats: each its box or sides; a weight not typed is the goods' weight shared equally + the tare. */
@@ -123,11 +123,13 @@ public class PackingConfirmation {
         int share = (int) Math.ceil(units.stream().mapToInt(Unit::weightG).sum() / (double) places.size());
         List<Parcel.Seat> seats = new ArrayList<>();
         List<NpBoxCatalog.OwnBox> own = new ArrayList<>();
+        long pack = 0;
         for (Place p : places) {
             if (p == null) {
                 throw NpErrors.bad("Место " + (seats.size() + 1) + ": выберите коробку или впишите размеры");
             }
             Choice c = choice(p);
+            pack += c.box() == null ? 0 : c.box().getPackMinor();
             checkWeight(p.weightG());
             int h = c.heightMm() != null ? c.heightMm() : thickness(p.custom(), units);
             // An own bag's thickness is in its label: the label is what tells the same seats again.
@@ -141,7 +143,7 @@ public class PackingConfirmation {
         Parcel.Seat first = seats.get(0);
         return new Measured(first.lengthMm(), first.widthMm(), first.heightMm(),
                 seats.stream().mapToInt(Parcel.Seat::weightG).sum(), null, seats,
-                PackingPlaces.label(seats.stream().map(Parcel.Seat::box).toList()), own);
+                PackingPlaces.label(seats.stream().map(Parcel.Seat::box).toList()), own, pack);
     }
 
     /** A bag of one seat: as thick as typed in for an own bag (a mat in stretch film), else as the goods. */
@@ -280,7 +282,7 @@ public class PackingConfirmation {
     /** The first waybill of a packed parcel: this box and weight, everything else from the order and settings. */
     private static Options firstWaybill(Measured m) {
         return new Options(null, m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm(), null, null, null, null, null,
-                null, null, false, null, m.seats());
+                null, null, false, null, m.seats(), m.packMinor());
     }
 
     /**
@@ -315,7 +317,7 @@ public class PackingConfirmation {
         Boolean collect = Boolean.FALSE.equals(s.getCollectCod()) ? Boolean.FALSE : null;
         return new Options(s.getSenderWarehouseRef(), m.weightG(), m.lengthMm(), m.widthMm(), m.heightMm(),
                 s.getDeclaredMinor(), collect, null, null, null, null, null, true,
-                "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE, m.seats());
+                "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE, m.seats(), m.packMinor());
     }
 
     /** The one box asked for; null = several seats. */
