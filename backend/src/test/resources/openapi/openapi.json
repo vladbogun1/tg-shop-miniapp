@@ -11882,6 +11882,10 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "packMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
           "recipientFirstName" : {
             "type" : "string"
           },

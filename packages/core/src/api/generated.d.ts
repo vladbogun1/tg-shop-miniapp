@@ -9732,6 +9732,8 @@ export interface components {
             heightMm?: number;
             /** Format: int32 */
             lengthMm?: number;
+            /** Format: int64 */
+            packMinor?: number;
             recipientFirstName?: string;
             recipientLastName?: string;
             recipientMiddleName?: string;
